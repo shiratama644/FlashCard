@@ -1,5 +1,6 @@
 import type { Category, Project, Tag } from "@/types/flashcard";
 import { getDb } from "@/lib/db/dexie.client";
+import { FlashcardDataSchema } from "@/features/flashcard/schemas/flashcard.schema";
 
 type FlashcardData = {
   categories: Category[];
@@ -21,7 +22,13 @@ export async function loadFlashcardData(): Promise<FlashcardData | null> {
     return null;
   }
 
-  return { categories, tags, projects };
+  const result = FlashcardDataSchema.safeParse({ categories, tags, projects });
+  if (!result.success) {
+    console.error("Corrupted data in IndexedDB – ignoring stored data", result.error);
+    return null;
+  }
+
+  return result.data;
 }
 
 export async function saveFlashcardData(data: FlashcardData): Promise<void> {
