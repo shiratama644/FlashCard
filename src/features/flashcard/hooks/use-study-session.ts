@@ -36,6 +36,9 @@ export function useStudySession(
   // Lerp animation
   const animFrameRef = useRef<number | null>(null);
 
+  // Ref-based stats to avoid stale closure in setTimeout
+  const statsRef = useRef<SessionStats>({ like: 0, nope: 0 });
+
   useEffect(() => {
     if (project) {
       const cards = [...project.cards];
@@ -44,6 +47,7 @@ export function useStudySession(
       setIsFlipped(false);
       setIsCompleted(false);
       setSessionStats({ like: 0, nope: 0 });
+      statsRef.current = { like: 0, nope: 0 };
     }
   }, [project]);
 
@@ -77,6 +81,7 @@ export function useStudySession(
     setIsFlipped(false);
     setIsCompleted(false);
     setSessionStats({ like: 0, nope: 0 });
+    statsRef.current = { like: 0, nope: 0 };
   }, [project]);
 
   const updateSwipeVisuals = useCallback((x: number) => {
@@ -125,10 +130,10 @@ export function useStudySession(
       if (!card) { setIsAnimating(false); return; }
 
       onCardSwiped?.(project!.id, currentIndex, direction, card);
-      setSessionStats((prev) => ({
-        like: prev.like + (direction === 1 ? 1 : 0),
-        nope: prev.nope + (direction === -1 ? 1 : 0),
-      }));
+      const newLike = statsRef.current.like + (direction === 1 ? 1 : 0);
+      const newNope = statsRef.current.nope + (direction === -1 ? 1 : 0);
+      statsRef.current = { like: newLike, nope: newNope };
+      setSessionStats({ like: newLike, nope: newNope });
 
       // Animate out
       const el = cardRef.current;
@@ -141,9 +146,8 @@ export function useStudySession(
       setTimeout(() => {
         const nextIdx = currentIndex + 1;
         if (nextIdx >= currentCards.length) {
-          const total = sessionStats.like + sessionStats.nope + 1;
-          const likes = sessionStats.like + (direction === 1 ? 1 : 0);
-          setDonutPercentage(Math.round((likes / total) * 100));
+          const total = newLike + newNope;
+          setDonutPercentage(total > 0 ? Math.round((newLike / total) * 100) : 0);
           setIsCompleted(true);
         } else {
           setCurrentIndex(nextIdx);
@@ -162,7 +166,7 @@ export function useStudySession(
         setIsAnimating(false);
       }, 400);
     },
-    [isAnimating, isCompleted, currentCards, currentIndex, project, onCardSwiped, sessionStats],
+    [isAnimating, isCompleted, currentCards, currentIndex, project, onCardSwiped],
   );
 
   const swipeOut = useCallback(
