@@ -38,9 +38,11 @@ export function useStudySession(
 
   // Ref-based stats to avoid stale closure in setTimeout
   const statsRef = useRef<SessionStats>({ like: 0, nope: 0 });
+  const prevProjectId = useRef<string | number | null>(null);
 
   useEffect(() => {
-    if (project) {
+    if (project && project.id !== prevProjectId.current) {
+      prevProjectId.current = project.id;
       const cards = [...project.cards];
       setCurrentCards(cards);
       setCurrentIndex(0);
