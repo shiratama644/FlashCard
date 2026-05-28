@@ -1,11 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { FlashcardProvider } from "@/features/flashcard/context/flashcard-context";
-import { AppShell } from "@/components/layout/app-shell";
+import { ClientProviders } from "@/components/layout/client-providers";
 
 export const metadata: Metadata = {
   title: "Swipe Flashcards App",
   description: "A modern flashcard app",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,14 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-          integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g"
-          crossOrigin="anonymous"
         />
       </head>
       <body className="app-body">
-        <FlashcardProvider>
-          <AppShell>{children}</AppShell>
-        </FlashcardProvider>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

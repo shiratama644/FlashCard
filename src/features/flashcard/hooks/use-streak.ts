@@ -118,27 +118,20 @@ export function useStreak() {
     });
   }, []);
 
-  const animateStreak = useCallback(() => {
+  const animateStreak = useCallback(async () => {
     const target = streakData.currentStreak;
     if (target === 0) {
       setDisplayStreak(0);
       return;
     }
-    let current = 0;
-    const stepTime = 16;
-    const increment = Math.max(1, Math.ceil(target / (1000 / stepTime)));
-
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= target) {
-        setDisplayStreak(target);
-        clearInterval(timer);
-      } else {
-        setDisplayStreak(current);
-      }
-    }, stepTime);
-
-    return () => clearInterval(timer);
+    const { gsap } = await import("@/lib/animation/gsap.client");
+    const proxy = { val: 0 };
+    gsap.to(proxy, {
+      val: target,
+      duration: 1.2,
+      ease: "power3.out",
+      onUpdate: () => setDisplayStreak(Math.round(proxy.val)),
+    });
   }, [streakData.currentStreak]);
 
   const streakMessage = (() => {
