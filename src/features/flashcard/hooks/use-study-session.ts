@@ -2,10 +2,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Card, Project, Tag } from "@/types/flashcard";
+import {
+  gsap,
+  animateCardEnter,
+  animateShuffleCard,
+  animateSwipeOut,
+  animateToggleReverse,
+  animateDonutProgress,
+  animateSnapBack,
+  animateLikeIcon,
+  animateNopeIcon,
+  resetOverlayStyles,
+} from "@/lib/animation/gsap.client";
+import confetti from "canvas-confetti";
 
 type SessionStats = {
   like: number;
   nope: number;
+};
+
+type OverlayRefs = {
+  likeStamp: HTMLElement | null;
+  nopeStamp: HTMLElement | null;
+  overlayBg: HTMLElement | null;
+  likeIcon: HTMLElement | null;
+  nopeIcon: HTMLElement | null;
 };
 
 export function useStudySession(
@@ -22,29 +43,36 @@ export function useStudySession(
   const [sessionStats, setSessionStats] = useState<SessionStats>({ like: 0, nope: 0 });
   const [donutPercentage, setDonutPercentage] = useState(0);
 
-  // Drag state
-  const [swipeX, setSwipeX] = useState(0);
   const isDragging = useRef(false);
+  const hasDragged = useRef(false);
+  const isSwipeMode = useRef<boolean | null>(null);
   const startX = useRef(0);
+  const startY = useRef(0);
   const currentSwipeX = useRef(0);
   const targetSwipeX = useRef(0);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const overlayBgRef = useRef<HTMLDivElement | null>(null);
   const likeStampRef = useRef<HTMLDivElement | null>(null);
   const nopeStampRef = useRef<HTMLDivElement | null>(null);
+  const likeIconRef = useRef<HTMLElement | null>(null);
+  const nopeIconRef = useRef<HTMLElement | null>(null);
 
-  // Lerp animation
-  const animFrameRef = useRef<number | null>(null);
-
-  // Ref-based stats to avoid stale closure in setTimeout
+  const dragLoopId = useRef<number | null>(null);
   const statsRef = useRef<SessionStats>({ like: 0, nope: 0 });
   const prevProjectId = useRef<string | number | null>(null);
+
+  const getOverlayRefs = useCallback((): OverlayRefs => ({
+    likeStamp: likeStampRef.current,
+    nopeStamp: nopeStampRef.current,
+    overlayBg: overlayBgRef.current,
+    likeIcon: likeIconRef.current,
+    nopeIcon: nopeIconRef.current,
+  }), []);
 
   useEffect(() => {
     if (project && project.id !== prevProjectId.current) {
       prevProjectId.current = project.id;
-      const cards = [...project.cards];
-      setCurrentCards(cards);
+      setCurrentCards([...project.cards]);
       setCurrentIndex(0);
       setIsFlipped(false);
       setIsCompleted(false);
@@ -59,22 +87,43 @@ export function useStudySession(
   }, [isAnimating]);
 
   const toggleReverseMode = useCallback(() => {
-    setIsReverseMode((prev) => !prev);
-    setIsFlipped(false);
-  }, []);
+    if (isAnimating || currentCards.length === 0) return;
+    setIsReverseMode((prev) => {
+      const next = !prev;
+      setIsFlipped(false);
+      requestAnimationFrame(() => {
+        animateToggleReverse(cardRef.current, next);
+      });
+      return next;
+    });
+  }, [isAnimating, currentCards.length]);
 
   const shuffleCards = useCallback(() => {
-    setCurrentCards((prev) => {
-      const arr = [...prev];
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    });
-    setCurrentIndex(0);
-    setIsFlipped(false);
-  }, []);
+    if (!project || project.cards.length === 0 || isAnimating) return;
+    setIsAnimating(true);
+
+    animateShuffleCard(
+      cardRef.current,
+      () => {
+        setCurrentCards((prev) => {
+          const arr = [...prev];
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+          }
+          return arr;
+        });
+        setCurrentIndex(0);
+        setIsFlipped(false);
+        setIsCompleted(false);
+        setSessionStats({ like: 0, nope: 0 });
+        statsRef.current = { like: 0, nope: 0 };
+        setDonutPercentage(0);
+        resetOverlayStyles(getOverlayRefs());
+      },
+      () => setIsAnimating(false),
+    );
+  }, [project, isAnimating, getOverlayRefs]);
 
   const resetStudy = useCallback(() => {
     if (!project) return;
@@ -84,46 +133,61 @@ export function useStudySession(
     setIsCompleted(false);
     setSessionStats({ like: 0, nope: 0 });
     statsRef.current = { like: 0, nope: 0 };
-  }, [project]);
+    setDonutPercentage(0);
+    requestAnimationFrame(() => {
+      if (cardRef.current) {
+        gsap.killTweensOf(cardRef.current);
+        gsap.set(cardRef.current, { clearProps: "all" });
+        gsap.set(cardRef.current, { transformOrigin: "50% 100%" });
+      }
+      resetOverlayStyles(getOverlayRefs());
+    });
+  }, [project, getOverlayRefs]);
 
-  const updateSwipeVisuals = useCallback((x: number) => {
-    const el = cardRef.current;
-    if (!el) return;
-    const rotation = x * 0.08;
-    el.style.transform = `translateX(${x}px) rotate(${rotation}deg)`;
+  // Drag update loop using GSAP lerp
+  const updateDrag = useCallback(() => {
+    if (!isDragging.current || isSwipeMode.current === false || !cardRef.current) return;
 
-    const progress = Math.min(Math.abs(x) / 120, 1);
+    const speed = 0.15;
+    currentSwipeX.current += (targetSwipeX.current - currentSwipeX.current) * speed;
+    const rotate = currentSwipeX.current * 0.04;
+
+    gsap.set(cardRef.current, {
+      x: currentSwipeX.current,
+      rotation: rotate,
+      force3D: true,
+    });
+
+    const likeOpacity = currentSwipeX.current > 20 ? Math.min(1, currentSwipeX.current / 100) : 0;
+    const nopeOpacity = currentSwipeX.current < -20 ? Math.min(1, -currentSwipeX.current / 100) : 0;
+
+    if (likeStampRef.current) likeStampRef.current.style.opacity = String(likeOpacity);
+    if (nopeStampRef.current) nopeStampRef.current.style.opacity = String(nopeOpacity);
+
     if (overlayBgRef.current) {
-      overlayBgRef.current.style.backgroundColor =
-        x > 0
-          ? `rgba(52,211,153,${progress * 0.2})`
-          : x < 0
-            ? `rgba(248,113,113,${progress * 0.2})`
-            : "transparent";
+      if (currentSwipeX.current > 0) overlayBgRef.current.style.backgroundColor = `rgba(16, 185, 129, ${likeOpacity * 0.2})`;
+      else if (currentSwipeX.current < 0) overlayBgRef.current.style.backgroundColor = `rgba(239, 68, 68, ${nopeOpacity * 0.2})`;
+      else overlayBgRef.current.style.backgroundColor = "transparent";
     }
-    if (likeStampRef.current) {
-      likeStampRef.current.style.opacity = x > 0 ? String(progress) : "0";
+
+    const likeScale = currentSwipeX.current > 20 ? 1.2 : 1;
+    const nopeScale = currentSwipeX.current < -20 ? 1.2 : 1;
+    const likeColor = currentSwipeX.current > 20 ? "#34d399" : "rgba(255,255,255,0.6)";
+    const nopeColor = currentSwipeX.current < -20 ? "#f87171" : "rgba(255,255,255,0.6)";
+
+    if (likeIconRef.current) {
+      likeIconRef.current.style.transform = `scale(${likeScale})`;
+      likeIconRef.current.style.color = likeColor;
     }
-    if (nopeStampRef.current) {
-      nopeStampRef.current.style.opacity = x < 0 ? String(progress) : "0";
+    if (nopeIconRef.current) {
+      nopeIconRef.current.style.transform = `scale(${nopeScale})`;
+      nopeIconRef.current.style.color = nopeColor;
     }
+
+    dragLoopId.current = requestAnimationFrame(updateDrag);
   }, []);
 
-  const lerpLoop = useCallback(() => {
-    currentSwipeX.current += (targetSwipeX.current - currentSwipeX.current) * 0.15;
-    updateSwipeVisuals(currentSwipeX.current);
-    setSwipeX(currentSwipeX.current);
-    animFrameRef.current = requestAnimationFrame(lerpLoop);
-  }, [updateSwipeVisuals]);
-
-  useEffect(() => {
-    animFrameRef.current = requestAnimationFrame(lerpLoop);
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [lerpLoop]);
-
-  const nextCard = useCallback(
+  const swipeOut = useCallback(
     (direction: 1 | -1) => {
       if (isAnimating || isCompleted) return;
       setIsAnimating(true);
@@ -131,69 +195,127 @@ export function useStudySession(
       const card = currentCards[currentIndex];
       if (!card) { setIsAnimating(false); return; }
 
+      const cardEl = cardRef.current;
+      const isButtonAction = currentSwipeX.current === 0;
+
+      if (cardEl && isButtonAction) {
+        gsap.killTweensOf(cardEl);
+        gsap.set(cardEl, { opacity: 1, scale: 1, willChange: "transform" });
+      }
+
       onCardSwiped?.(project!.id, currentIndex, direction, card);
       const newLike = statsRef.current.like + (direction === 1 ? 1 : 0);
       const newNope = statsRef.current.nope + (direction === -1 ? 1 : 0);
       statsRef.current = { like: newLike, nope: newNope };
       setSessionStats({ like: newLike, nope: newNope });
 
-      // Animate out
-      const el = cardRef.current;
-      if (el) {
-        const flyX = direction * window.innerWidth;
-        el.style.transition = "transform 0.4s cubic-bezier(0.22,1,0.36,1)";
-        el.style.transform = `translateX(${flyX}px) rotate(${direction * 30}deg)`;
+      if (direction === 1) {
+        animateLikeIcon(likeIconRef.current);
+        confetti({
+          particleCount: 40, spread: 60, origin: { y: 0.8 },
+          colors: ["#34d399", "#10b981", "#059669"],
+          disableForReducedMotion: true, zIndex: 100,
+        });
+      } else {
+        animateNopeIcon(nopeIconRef.current);
       }
 
-      setTimeout(() => {
-        const nextIdx = currentIndex + 1;
-        if (nextIdx >= currentCards.length) {
-          const total = newLike + newNope;
-          setDonutPercentage(total > 0 ? Math.round((newLike / total) * 100) : 0);
-          setIsCompleted(true);
-        } else {
-          setCurrentIndex(nextIdx);
-        }
-        setIsFlipped(false);
-        targetSwipeX.current = 0;
-        currentSwipeX.current = 0;
-        if (el) {
-          el.style.transition = "none";
-          el.style.transform = "translateX(0) rotate(0deg)";
-        }
-        if (overlayBgRef.current) overlayBgRef.current.style.backgroundColor = "transparent";
-        if (likeStampRef.current) likeStampRef.current.style.opacity = "0";
-        if (nopeStampRef.current) nopeStampRef.current.style.opacity = "0";
+      animateSwipeOut(
+        cardEl,
+        direction,
+        isButtonAction,
+        getOverlayRefs(),
+        () => {
+          setIsFlipped(false);
+          currentSwipeX.current = 0;
+          targetSwipeX.current = 0;
+          resetOverlayStyles(getOverlayRefs());
 
-        setIsAnimating(false);
-      }, 400);
-    },
-    [isAnimating, isCompleted, currentCards, currentIndex, project, onCardSwiped],
-  );
+          if (currentIndex < currentCards.length - 1) {
+            setCurrentIndex((prev) => prev + 1);
+            requestAnimationFrame(() => {
+              setIsAnimating(false);
+              animateCardEnter(cardEl);
+            });
+          } else {
+            setIsCompleted(true);
+            setIsAnimating(false);
+            if (cardEl) gsap.set(cardEl, { willChange: "auto" });
 
-  const swipeOut = useCallback(
-    (direction: 1 | -1) => {
-      nextCard(direction);
+            const total = newLike + newNope;
+            const targetPercent = total > 0 ? (newLike / total) * 100 : 0;
+            setDonutPercentage(0);
+            animateDonutProgress(setDonutPercentage, targetPercent);
+
+            const duration = 1000;
+            const end = Date.now() + duration;
+            const frame = () => {
+              confetti({
+                particleCount: 2, angle: 60, spread: 55,
+                origin: { x: 0, y: 0.8 },
+                colors: ["#facc15", "#fbbf24", "#f59e0b", "#34d399", "#60a5fa"],
+                zIndex: 100,
+              });
+              confetti({
+                particleCount: 2, angle: 120, spread: 55,
+                origin: { x: 1, y: 0.8 },
+                colors: ["#facc15", "#fbbf24", "#f59e0b", "#34d399", "#60a5fa"],
+                zIndex: 100,
+              });
+              if (Date.now() < end) requestAnimationFrame(frame);
+            };
+            frame();
+          }
+        },
+      );
     },
-    [nextCard],
+    [isAnimating, isCompleted, currentCards, currentIndex, project, onCardSwiped, getOverlayRefs],
   );
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (isAnimating || isCompleted) return;
+      if (isAnimating || isCompleted || currentCards.length === 0) return;
+
+      if (cardRef.current) {
+        gsap.killTweensOf(cardRef.current);
+        gsap.set(cardRef.current, { opacity: 1, scale: 1, willChange: "transform" });
+      }
+
       isDragging.current = true;
+      hasDragged.current = false;
+      isSwipeMode.current = null;
       startX.current = e.clientX;
+      startY.current = e.clientY;
       targetSwipeX.current = 0;
       currentSwipeX.current = 0;
+
+      if (cardRef.current) gsap.set(cardRef.current, { willChange: "transform" });
+
+      if (dragLoopId.current) cancelAnimationFrame(dragLoopId.current);
+      dragLoopId.current = requestAnimationFrame(updateDrag);
     },
-    [isAnimating, isCompleted],
+    [isAnimating, isCompleted, currentCards.length, updateDrag],
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!isDragging.current) return;
-      const delta = e.clientX - startX.current;
-      targetSwipeX.current = delta;
+      const deltaX = e.clientX - startX.current;
+      const deltaY = e.clientY - startY.current;
+
+      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) hasDragged.current = true;
+
+      if (isSwipeMode.current === null) {
+        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
+          isSwipeMode.current = false;
+        } else if (Math.abs(deltaX) > 2) {
+          isSwipeMode.current = true;
+        }
+      }
+
+      if (isSwipeMode.current !== false) {
+        targetSwipeX.current = deltaX;
+      }
     },
     [],
   );
@@ -202,21 +324,34 @@ export function useStudySession(
     if (!isDragging.current) return;
     isDragging.current = false;
 
-    const finalX = currentSwipeX.current;
-    const threshold = 100;
-
-    if (Math.abs(finalX) > threshold) {
-      nextCard(finalX > 0 ? 1 : -1);
-    } else {
-      targetSwipeX.current = 0;
+    if (dragLoopId.current) {
+      cancelAnimationFrame(dragLoopId.current);
+      dragLoopId.current = null;
     }
-  }, [nextCard]);
+
+    if (isSwipeMode.current !== false) {
+      const threshold = window.innerWidth * 0.25;
+      if (currentSwipeX.current > threshold) {
+        swipeOut(1);
+        return;
+      } else if (currentSwipeX.current < -threshold) {
+        swipeOut(-1);
+        return;
+      } else {
+        animateSnapBack(cardRef.current, getOverlayRefs());
+        targetSwipeX.current = 0;
+        currentSwipeX.current = 0;
+      }
+    }
+
+    if (cardRef.current) gsap.set(cardRef.current, { willChange: "auto" });
+    isSwipeMode.current = null;
+  }, [swipeOut, getOverlayRefs]);
 
   const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (Math.abs(currentSwipeX.current) < 5) {
-        flipCard();
-      }
+    (_e: React.MouseEvent) => {
+      if (hasDragged.current) return;
+      flipCard();
     },
     [flipCard],
   );
@@ -246,6 +381,13 @@ export function useStudySession(
     return () => window.removeEventListener("keydown", handler);
   }, [isCompleted, isAnimating, swipeOut, flipCard]);
 
+  // Cleanup drag loop on unmount
+  useEffect(() => {
+    return () => {
+      if (dragLoopId.current) cancelAnimationFrame(dragLoopId.current);
+    };
+  }, []);
+
   return {
     currentCards,
     currentIndex,
@@ -255,7 +397,6 @@ export function useStudySession(
     isReverseMode,
     sessionStats,
     donutPercentage,
-    swipeX,
 
     flipCard,
     toggleReverseMode,
@@ -272,5 +413,7 @@ export function useStudySession(
     overlayBgRef,
     likeStampRef,
     nopeStampRef,
+    likeIconRef,
+    nopeIconRef,
   };
 }

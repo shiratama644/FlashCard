@@ -2,19 +2,17 @@
 
 import { useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useFlashcard } from "@/features/flashcard/context/flashcard-context";
 import { useStudySession } from "@/features/flashcard/hooks/use-study-session";
 import { useStreak } from "@/features/flashcard/hooks/use-streak";
 import type { Card } from "@/types/flashcard";
 
 export default function StudyViewPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
   const {
     activeProject,
-    activeProjectId,
     tagMap,
     setProjects,
     forceSave,
@@ -53,7 +51,6 @@ export default function StudyViewPage() {
     isReverseMode,
     sessionStats,
     donutPercentage,
-    flipCard,
     toggleReverseMode,
     shuffleCards,
     resetStudy,
@@ -66,6 +63,8 @@ export default function StudyViewPage() {
     overlayBgRef,
     likeStampRef,
     nopeStampRef,
+    likeIconRef,
+    nopeIconRef,
   } = useStudySession(activeProject, tagMap, handleCardSwiped);
 
   useEffect(() => {
@@ -306,7 +305,7 @@ export default function StudyViewPage() {
         <footer className="study-footer">
           <button onClick={() => swipeOut(-1)} className="swipe-btn nope">
             <div className="swipe-btn-circle">
-              <i className="fa-solid fa-xmark" />
+              <i ref={nopeIconRef} className="fa-solid fa-xmark" style={{ color: "rgba(255,255,255,0.6)", transition: "color 0.15s, transform 0.15s" }} />
             </div>
             <span className="swipe-btn-text">まだ (←)</span>
           </button>
@@ -316,7 +315,7 @@ export default function StudyViewPage() {
           </div>
           <button onClick={() => swipeOut(1)} className="swipe-btn like">
             <div className="swipe-btn-circle">
-              <i className="fa-solid fa-check" />
+              <i ref={likeIconRef} className="fa-solid fa-check" style={{ color: "rgba(255,255,255,0.6)", transition: "color 0.15s, transform 0.15s" }} />
             </div>
             <span className="swipe-btn-text">覚えた (→)</span>
           </button>
