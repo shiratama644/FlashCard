@@ -1,5 +1,5 @@
-import { FlashcardApp } from "@/components/FlashcardApp";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <FlashcardApp />;
+  redirect("/home");
 }
