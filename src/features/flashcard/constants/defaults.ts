@@ -12,6 +12,37 @@ export const TAG_COLORS = [
   "bg-teal-500 text-white border-teal-400",
 ];
 
+export function getRandomColor(): string {
+  return TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
+}
+
+export function getColorCode(colorClass: string): string {
+  if (!colorClass) return "#ffffff";
+  const map: Record<string, string> = {
+    red: "#ef4444",
+    blue: "#3b82f6",
+    green: "#22c55e",
+    yellow: "#eab308",
+    purple: "#a855f7",
+    pink: "#ec4899",
+    cyan: "#06b6d4",
+    orange: "#f97316",
+    teal: "#14b8a6",
+    slate: "#64748b",
+  };
+  for (const key in map) {
+    if (colorClass.includes(key)) return map[key];
+  }
+  return "#ffffff";
+}
+
+export function generateId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "cat_english", name: "英語", colorClass: "bg-blue-500 text-white border-blue-400", expanded: false, newTagName: "" },
   { id: "cat_japanese", name: "国語", colorClass: "bg-red-500 text-white border-red-400", expanded: false, newTagName: "" },
@@ -40,6 +71,95 @@ export const DEFAULT_PROJECTS: Project[] = [
           { tagId: 2, value: "火をつける・照らす" },
         ],
         example: "Could you turn on the light?",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "book",
+        backDetails: [
+          { tagId: 1, value: "本・書物" },
+          { tagId: 2, value: "予約する" },
+        ],
+        example: "I need to book a flight to Tokyo.",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+    ],
+  },
+  {
+    id: 2,
+    title: "漢文（再読文字の基本）",
+    description: "漢文における重要な再読文字の書き下し方と現代語訳のセットです。",
+    categoryId: "cat_japanese",
+    cards: [
+      {
+        front: "未",
+        backDetails: [
+          { tagId: 4, value: "いまだ〜ず" },
+          { tagId: 5, value: "まだ〜ない" },
+        ],
+        example: "未有変也（いまだへんあらざるなり：まだ変化がないのである）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "将 / 且",
+        backDetails: [
+          { tagId: 4, value: "まさに〜（せんと）す" },
+          { tagId: 5, value: "今にも〜しようとする、〜するつもりだ" },
+        ],
+        example: "将行（まさに行かんとす：今にも出発しようとする）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "応",
+        backDetails: [
+          { tagId: 4, value: "まさに〜べし" },
+          { tagId: 5, value: "きっと〜だろう、当然〜すべきだ" },
+        ],
+        example: "応知（まさに知るべし：きっと知っているだろう）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "須",
+        backDetails: [
+          { tagId: 4, value: "すべからく〜べし" },
+          { tagId: 5, value: "ぜひ〜する必要がある、〜しなければならない" },
+        ],
+        example: "須知（すべからく知るべし：ぜひ知る必要がある）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "猶 / 由",
+        backDetails: [
+          { tagId: 4, value: "なほ〜のごとし" },
+          { tagId: 5, value: "ちょうど〜のようだ、あたかも〜と同じだ" },
+        ],
+        example: "過猶不及（過ぎたるはなほ及ばざるがごとし：行き過ぎているのは、届かないのと同じだ）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "宜",
+        backDetails: [
+          { tagId: 4, value: "よろしく〜べし" },
+          { tagId: 5, value: "〜するのがよい、〜するのが適当だ" },
+        ],
+        example: "宜従（よろしく従ふべし：従うのがよい）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "盍 / 蓋",
+        backDetails: [
+          { tagId: 4, value: "なんぞ〜ざる" },
+          { tagId: 5, value: "どうして〜しないのか、（〜すればよいのに）" },
+        ],
+        example: "盍各言爾志（なんぞおのおのなんぢの志を言はざる：どうしてそれぞれ自分の抱負を言わないのか、言えばよいのに）",
+        stats: { likes: 0, nopes: 0, status: "new" },
+      },
+      {
+        front: "当",
+        backDetails: [
+          { tagId: 4, value: "まさに〜べし" },
+          { tagId: 5, value: "当然〜すべきだ、きっと〜だろう" },
+        ],
+        example: "当知（まさに知るべし：当然知るべきだ）",
         stats: { likes: 0, nopes: 0, status: "new" },
       },
     ],

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { FlashcardProvider } from "@/features/flashcard/context/flashcard-context";
+import { AppShell } from "@/components/layout/app-shell";
 
 export const metadata: Metadata = {
   title: "Swipe Flashcards App",
@@ -22,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="app-body">
-        {children}
+        <FlashcardProvider>
+          <AppShell>{children}</AppShell>
+        </FlashcardProvider>
       </body>
     </html>
   );
