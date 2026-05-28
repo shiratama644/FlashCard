@@ -41,3 +41,9 @@ export const ProjectSchema = z.object({
   categoryId: z.union([z.string(), z.number()]),
   cards: z.array(CardSchema),
 });
+
+export const FlashcardDataSchema = z.object({
+  categories: z.array(CategorySchema),
+  tags: z.array(TagSchema),
+  projects: z.array(ProjectSchema),
+});
