@@ -1,0 +1,845 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Swipe Flashcards App</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Noto+Sans+JP:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body class="app-body">
+
+  <div id="global-loader">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Loading...</div>
+  </div>
+
+  <div x-data="flashcardApp()" x-cloak class="app-wrapper">
+    
+    <!-- Toast Container -->
+    <div class="toast-container">
+      <template x-for="toast in toasts" :key="toast.id">
+        <div class="toast" :class="'toast-' + toast.type"
+             x-init="$nextTick(() => toast.show = true)"
+             x-show="toast.show"
+             x-transition:enter="toast-enter-active"
+             x-transition:enter-start="toast-enter-start"
+             x-transition:enter-end="toast-enter-end"
+             x-transition:leave="toast-leave-active"
+             x-transition:leave-start="toast-leave-start"
+             x-transition:leave-end="toast-leave-end">
+          <i class="fa-solid" :class="toast.type === 'error' ? 'fa-circle-exclamation' : (toast.type === 'success' ? 'fa-circle-check' : 'fa-circle-info')"></i>
+          <span x-text="toast.message"></span>
+         </div>
+      </template>
+    </div>
+
+
+    <div class="app-container">
+
+      <!-- ==========================================
+           0. STREAK VIEW (Duolingo Style)
+      =========================================== -->
+      <div x-show="currentView === 'streak'" class="view-container bg-[#13151a] flex flex-col items-center justify-between p-6 z-50" style="display: none;"
+           x-transition:enter="view-enter-active" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+           x-transition:leave="view-leave-active-fast" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0 scale-105">
+        
+        <div class="flex-1 flex flex-col items-center justify-center w-full max-w-md">
+          <!-- 炎アイコン -->
+          <div class="relative flex items-center justify-center w-40 h-40 mb-4">
+            <!-- 背景の光に animate-pulse を追加 -->
+            <div class="absolute inset-0 bg-[#ffc800] rounded-full blur-3xl opacity-20 animate-pulse"></div>
+            <div class="absolute top-2 right-8 w-3 h-3 bg-[#ffc800] rounded-full animate-pulse"></div>
+            <!-- animate-flame と origin-bottom を追加 -->
+            <i class="fa-solid fa-fire-flame-curved text-[8rem] text-transparent bg-clip-text bg-gradient-to-b from-[#ffc800] to-[#ff7b00] drop-shadow-2xl animate-flame origin-bottom"></i>
+          </div>
+
+          <!-- 日数 -->
+          <div class="text-[7rem] leading-none font-extrabold text-transparent bg-clip-text bg-gradient-to-b from-[#ffc800] to-[#ff7b00] tracking-tighter" x-text="displayStreak"></div>
+          <div class="text-2xl font-bold text-[#ff7b00] mt-2 mb-12">日連続記録</div>
+
+          <!-- カレンダー -->
+          <div class="w-full mb-8">
+            <!-- 曜日ラベル -->
+            <div class="grid grid-cols-7 w-full mb-3 px-1">
+              <template x-for="day in weekDays">
+                <div class="text-center text-sm font-bold" 
+                     :class="day.isToday ? 'text-[#ff7b00]' : 'text-gray-500'" 
+                     x-text="day.dayName"></div>
+              </template>
+            </div>
+            
+            <!-- カプセルバー -->
+            <div class="relative w-full bg-[#2a2d36] rounded-full p-1.5 shadow-inner">
+              <!-- 背景バーレイヤー (シームレスグラデーション) -->
+              <div class="absolute inset-1.5 grid grid-cols-7 gap-0">
+                <template x-for="(day, index) in weekDays">
+                  <div class="h-full" 
+                       :class="{
+                          'bg-gradient-to-r from-[#ffc800] to-[#ff7b00]': day.isStudied,
+                          'rounded-l-full': day.isStudied && (index === 0 || !weekDays[index-1].isStudied),
+                          'rounded-r-full': day.isStudied && (index === 6 || !weekDays[index+1].isStudied),
+                          'opacity-0': !day.isStudied
+                       }"
+                       :style="day.isStudied ? `background-size: 700% 100%; background-position: ${index * (100/6)}% 0;` : ''"
+                  ></div>
+                </template>
+              </div>
+              <!-- アイコンレイヤー -->
+              <div class="relative z-10 grid grid-cols-7 h-10">
+                <template x-for="day in weekDays">
+                  <div class="flex items-center justify-center h-full">
+                    <i class="fa-solid fa-check text-[#13151a] text-xl" x-show="day.isStudied"></i>
+                    <div class="w-3 h-3 rounded-full bg-[#4b4f5a]" x-show="!day.isStudied"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- 動的メッセージ -->
+          <div class="text-center text-lg font-bold text-white leading-relaxed whitespace-pre-wrap" x-html="streakMessage"></div>
+        </div>
+
+        <!-- 続行ボタン -->
+        <div class="w-full max-w-md mt-8 pb-4">
+          <button @click="continueFromStreak()" 
+                  class="w-full py-4 rounded-2xl bg-[#1cb0f6] hover:bg-[#1899d6] text-white text-xl font-bold uppercase tracking-wider shadow-[0_4px_0_0_#1899d6] active:shadow-none active:translate-y-1 transition-all">
+            次へ
+          </button>
+        </div>
+      </div>
+      
+      <!-- ==========================================
+           1. HOME VIEW
+      =========================================== -->
+      <div x-show="currentView === 'home'" class="view-container" style="display: none;"
+           x-transition:enter="view-enter-active" x-transition:enter-start="view-enter-from-left" x-transition:enter-end="view-enter-to"
+           x-transition:leave="view-leave-active-fast" x-transition:leave-start="view-enter-to" x-transition:leave-end="view-leave-to-left">
+        
+        <header class="view-header">
+          <h1 class="view-title">
+            <i class="fa-solid fa-layer-group text-purple-400"></i> Projects
+          </h1>
+          <div class="flex gap-3">
+            <button @click="currentView = 'ai'" class="btn-icon btn-gradient-purple" title="AIで生成">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </button>
+            <button @click="currentView = 'categories'" class="btn-icon btn-glass" title="カテゴリ・タグ管理">
+              <i class="fa-solid fa-folder-tree"></i>
+            </button>
+            <button @click="currentView = 'settings'" class="btn-icon btn-glass" title="設定">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+        </header>
+        
+        <main class="view-main pt-0">
+          <div class="project-grid">
+            <template x-for="project in projects" :key="project.id">
+              <div @click="openProject(project.id)" class="project-card">
+                <div class="project-card-bg"></div>
+                
+                <div class="project-card-header">
+                  <div class="project-info">
+                    <div>
+                      <span class="category-badge" 
+                            :class="categoryMap[project.categoryId]?.colorClass || 'default-badge'" 
+                            x-text="categoryMap[project.categoryId]?.name || '未分類'"></span>
+                    </div>
+                    <h2 class="project-title" x-text="project.title"></h2>
+                  </div>
+                  
+                  <div class="project-actions">
+                    <button @click.stop="shareProject(project)" class="btn-icon btn-panel" style="width: 2.5rem; height: 2.5rem;" title="共有する">
+                      <i class="fa-solid fa-share-nodes text-sm"></i>
+                    </button>
+                    <button @click.stop="openProject(project.id, true)" class="btn-icon btn-panel" style="width: 2.5rem; height: 2.5rem;" title="裏面(意味)から学習">
+                      <i class="fa-solid fa-right-left text-sm"></i>
+                    </button>
+                    <button @click.stop="openStats(project.id)" class="btn-icon btn-panel" style="width: 2.5rem; height: 2.5rem;" title="統計を見る">
+                      <i class="fa-solid fa-chart-pie text-sm"></i>
+                    </button>
+                    <button @click.stop="openEditProject(project)" class="btn-icon btn-panel" style="width: 2.5rem; height: 2.5rem;" title="編集する">
+                      <i class="fa-solid fa-pen text-sm"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <p class="project-desc" x-text="project.description"></p>
+                <div class="project-meta">
+                  <i class="fa-regular fa-clone"></i> <span x-text="project.cards.length + ' cards'"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </main>
+        
+        <button @click="showProjectModal = true" class="fab-btn fab-cyan" title="新規プロジェクト">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
+
+      <!-- ==========================================
+           2. STUDY VIEW
+      =========================================== -->
+      <div x-show="currentView === 'study'" class="view-container bg-blur-light" style="display: none;"
+           x-transition:enter="view-enter-active" x-transition:enter-start="view-enter-from-right" x-transition:enter-end="view-enter-to"
+           x-transition:leave="view-leave-active-fast" x-transition:leave-start="view-enter-to" x-transition:leave-end="view-leave-to-right">
+        
+        <header class="view-header border-b" style="padding-bottom: 0.5rem; border: none;">
+          <button @click="goHome()" class="btn-icon btn-glass">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          
+          <div class="study-header-title">
+            <span class="truncate w-full" x-text="activeProject?.title"></span>
+            <button @click="toggleReverseMode()" class="mode-toggle-btn" title="タップして切り替え">
+              <i class="fa-solid fa-right-left" :class="isReverseMode ? 'text-cyan-300' : 'text-yellow-300'"></i>
+              <span x-text="isReverseMode ? '意味から学習中' : '単語から学習中'"></span>
+            </button>
+          </div>
+
+          <div class="flex gap-2 shrink-0">
+            <button @click="shuffleCards()" class="btn-icon btn-glass" title="シャッフル">
+              <i class="fa-solid fa-shuffle"></i>
+            </button>
+            <button @click="currentView = 'cardList'" class="btn-icon btn-glass" title="カード一覧">
+              <i class="fa-solid fa-list"></i>
+            </button>
+          </div>
+        </header>
+        
+        <template x-if="currentCards.length > 0">
+          <div class="progress-wrap px-4 mb-2">
+            <div class="progress-text">
+              <div class="progress-badge">
+                <span x-text="currentIndex + 1" class="text-white"></span>
+                <span style="color: rgba(255,255,255,0.5); margin: 0 0.25rem;">/</span>
+                <span x-text="currentCards.length" style="color: rgba(255,255,255,0.8);"></span>
+              </div>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" :style="`width: ${((currentIndex + 1) / currentCards.length) * 100}%`"></div>
+            </div>
+          </div>
+        </template>
+
+        <main class="study-main">
+          <template x-if="currentCards.length === 0">
+            <div class="empty-state">
+              <i class="fa-regular fa-folder-open empty-icon"></i>
+              <h2 class="text-xl font-bold mb-2">No Cards Yet</h2>
+              <p class="text-sm mb-6" style="color: rgba(255,255,255,0.6);">カード一覧から単語を追加してください</p>
+              <button @click="currentView = 'cardList'" class="btn-secondary w-full">
+                カード一覧へ
+              </button>
+            </div>
+          </template>
+          
+          <template x-if="currentCards.length > 0">
+            <div class="card-container" x-ref="cardElement"
+                 @mousedown="startDrag" @mousemove.window="onDrag" @mouseup.window="endDrag"
+                 @touchstart="startDrag" @touchmove.window="onDrag" @touchend.window="endDrag"
+                 @click="handleClick">
+              
+              <div class="card-overlay-bg" x-ref="overlayBg">
+                <div class="stamp stamp-like" x-ref="likeStamp">LIKE</div>
+                <div class="stamp stamp-nope" x-ref="nopeStamp">NOPE</div>
+              </div>
+
+              <div class="card-inner" :class="isFlipped ? 'is-flipped' : ''">
+                
+                <!-- 表面 -->
+                <div class="card-face card-front">
+                  <div class="card-icon-wrap">
+                    <i class="fa-regular fa-lightbulb text-xl text-yellow-300"></i>
+                  </div>
+                  
+                  <div x-show="!isReverseMode" class="w-full">
+                    <h2 class="card-word" x-text="currentCards[currentIndex]?.front"></h2>
+                  </div>
+
+                  <div x-show="isReverseMode" class="w-full flex-1 flex flex-col justify-center items-center mt-12 mb-8" style="display: none;">
+                    <div class="card-details-list">
+                      <template x-for="(detail, i) in (currentCards[currentIndex]?.backDetails || [])" :key="'front_detail_'+i">
+                        <div class="card-detail-item">
+                          <template x-if="detail.tagId && tagMap[detail.tagId]">
+                            <span class="card-detail-tag" 
+                                  :class="tagMap[detail.tagId].colorClass" 
+                                  x-text="tagMap[detail.tagId].name"></span>
+                          </template>
+                          <span class="card-detail-val" :class="detail.tagId ? 'with-tag' : 'no-tag'" x-text="detail.value"></span>
+                        </div>
+                      </template>
+                    </div>
+                  </div>
+
+                  <div class="card-hint">
+                    <i class="fa-solid fa-hand-pointer"></i> Tap to flip
+                  </div>
+                </div>
+
+                <!-- 裏面 -->
+                <div class="card-face card-back">
+                  <div class="card-icon-wrap">
+                    <i class="fa-solid fa-language text-xl text-cyan-300"></i>
+                  </div>
+                  <div class="w-full flex-1 flex flex-col justify-center">
+                    
+                    <div x-show="!isReverseMode" class="w-full mb-6">
+                      <div class="card-details-list">
+                        <template x-for="(detail, i) in (currentCards[currentIndex]?.backDetails || [])" :key="'back_detail_'+i">
+                          <div class="card-detail-item">
+                            <template x-if="detail.tagId && tagMap[detail.tagId]">
+                              <span class="card-detail-tag" 
+                                    :class="tagMap[detail.tagId].colorClass" 
+                                    x-text="tagMap[detail.tagId].name"></span>
+                            </template>
+                            <span class="card-detail-val" :class="detail.tagId ? 'with-tag' : 'no-tag'" x-text="detail.value"></span>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+
+                    <div x-show="isReverseMode" class="flex flex-col items-center justify-center mb-6 my-auto" style="display: none;">
+                      <h2 class="card-word" x-text="currentCards[currentIndex]?.front"></h2>
+                    </div>
+
+                    <div x-show="currentCards[currentIndex]?.example" class="card-example">
+                      <p x-text="`&quot;${currentCards[currentIndex]?.example || ''}&quot;`"></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </main>
+
+        <footer class="study-footer" x-show="currentCards.length > 0">
+          <button @click="swipeOut(-1)" class="swipe-btn nope" x-ref="nopeIcon">
+            <div class="swipe-btn-circle">
+              <i class="fa-solid fa-xmark"></i>
+            </div>
+            <span class="swipe-btn-text">まだ (←)</span>
+          </button>
+          <div class="swipe-indicator">
+            <i class="fa-solid fa-arrows-left-right"></i>
+            <span>SWIPE</span>
+          </div>
+          <button @click="swipeOut(1)" class="swipe-btn like" x-ref="likeIcon">
+            <div class="swipe-btn-circle">
+              <i class="fa-solid fa-check"></i>
+            </div>
+            <span class="swipe-btn-text">覚えた (→)</span>
+          </button>
+        </footer>
+      </div>
+
+      <!-- ==========================================
+           SHARED SUB-VIEWS (Card List, Stats, Categories, Settings, AI)
+      =========================================== -->
+      <div x-show="isSubView" class="view-container bg-blur" style="display: none;"
+           x-transition:enter="view-enter-active" x-transition:enter-start="view-enter-from-dynamic" x-transition:enter-end="view-enter-to"
+           x-transition:leave="view-leave-active-fast" x-transition:leave-start="view-enter-to" x-transition:leave-end="view-leave-to-dynamic">
+        
+        <header class="view-header border-b">
+          <button @click="goBackFromSubView()" class="btn-icon btn-glass shrink-0">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          
+          <div class="view-title flex-1 min-w-0 justify-center px-4 flex items-center gap-2">
+            <i x-show="subViewIcon" class="fa-solid" :class="subViewIcon" :style="subViewIconStyle"></i>
+            <h1 class="truncate text-center w-full text-lg font-bold" x-text="subViewTitle"></h1>
+          </div>
+
+          <div class="shrink-0" style="width: 2.5rem;"></div>
+        </header>
+        
+        <main class="view-main" :class="currentView === 'ai' ? 'flex flex-col items-center' : ''">
+          
+          <!-- 2.5 CARD LIST VIEW -->
+          <template x-if="currentView === 'cardList'">
+            <div class="w-full">
+              <template x-if="currentCards.length === 0">
+                <div class="text-center mt-8" style="color: rgba(255,255,255,0.5);">カードがありません</div>
+              </template>
+              
+              <div class="list-grid">
+                <template x-for="(card, index) in currentCards" :key="card.front + '_' + index">
+                  <div class="card-list-item">
+                    <div class="list-item-info">
+                      <div class="list-item-title" x-text="card.front"></div>
+                      <div class="list-item-desc" x-text="card.backDetails.map(d => d.value).join(', ')"></div>
+                    </div>
+                    <div class="list-item-actions">
+                      <button @click="openCardModal(index)" class="btn-small-icon btn-edit">
+                        <i class="fa-solid fa-pen"></i>
+                      </button>
+                      <button @click="deleteCard(index)" class="btn-small-icon btn-delete">
+                        <i class="fa-solid fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- 2.6 STATS VIEW -->
+          <template x-if="currentView === 'stats'">
+            <div class="stats-grid w-full">
+              <div class="stats-col-1">
+                <div class="stats-summary-card">
+                  <h2 class="stats-title"><i class="fa-solid fa-chart-simple text-cyan-400"></i> 学習進捗</h2>
+                  
+                  <div class="flex justify-between items-end mb-2">
+                    <div class="stats-main-val">
+                      <span x-text="projectStats.mastered"></span><span class="stats-sub-val"> / <span x-text="activeProject?.cards.length || 0"></span></span>
+                    </div>
+                    <div class="stats-badge">Mastered</div>
+                  </div>
+                  
+                  <div class="stats-bar-wrap">
+                    <div class="stats-bar bg-emerald-500" :style="`width: ${projectStats.masteredRate}%`"></div>
+                    <div class="stats-bar bg-red-500" :style="`width: ${projectStats.learningRate}%`"></div>
+                    <div class="stats-bar bg-slate-500" :style="`width: ${projectStats.newRate}%`"></div>
+                  </div>
+                  
+                  <div class="stats-legend">
+                    <div class="stats-legend-item text-emerald-400">
+                      <div class="stats-legend-label"><span class="stats-dot bg-emerald-500"></span> 覚えた</div>
+                      <span x-text="projectStats.mastered"></span>
+                    </div>
+                    <div class="stats-legend-item text-red-400">
+                      <div class="stats-legend-label"><span class="stats-dot bg-red-500"></span> 学習中</div>
+                      <span x-text="projectStats.learning"></span>
+                    </div>
+                    <div class="stats-legend-item text-slate-400">
+                      <div class="stats-legend-label"><span class="stats-dot bg-slate-500"></span> 未学習</div>
+                      <span x-text="projectStats.new"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stats-col-3">
+                <h3 class="font-bold mb-3 px-1 text-sm" style="color: rgba(255,255,255,0.8);">カード別データ</h3>
+                <div class="stats-card-grid">
+                  <template x-if="!activeProject || activeProject.cards.length === 0">
+                    <div class="text-center py-4 text-sm" style="color: rgba(255,255,255,0.5); grid-column: 1 / -1;">カードがありません</div>
+                  </template>
+                  <template x-for="card in activeProject?.cards" :key="card.front">
+                    <div class="stats-card-item">
+                      <div class="flex-1 min-w-0 pr-4">
+                        <div class="font-bold text-lg truncate" x-text="card.front"></div>
+                        <div class="stats-card-counts">
+                          <span class="count-badge count-like"><i class="fa-solid fa-check mr-1"></i><span x-text="card.stats?.likes || 0"></span></span>
+                          <span class="count-badge count-nope"><i class="fa-solid fa-xmark mr-1"></i><span x-text="card.stats?.nopes || 0"></span></span>
+                        </div>
+                      </div>
+                      <div>
+                        <span class="status-badge"
+                              :class="{
+                                'bg-emerald-500/20 text-emerald-300 border-emerald-500/30': card.stats?.status === 'mastered',
+                                'bg-red-500/20 text-red-300 border-red-500/30': card.stats?.status === 'learning',
+                                'bg-slate-500/20 text-slate-300 border-slate-500/30': !card.stats || card.stats?.status === 'new'
+                              }"
+                              x-text="card.stats?.status === 'mastered' ? '覚えた' : (card.stats?.status === 'learning' ? '学習中' : '未学習')">
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- 3. CATEGORIES & TAGS VIEW -->
+          <template x-if="currentView === 'categories'">
+            <div class="w-full">
+              <div class="input-group">
+                <input type="text" x-model="newCategoryName" placeholder="新しいカテゴリ名" class="input-field">
+                <button @click="addCategory()" class="btn-primary shrink-0">追加</button>
+              </div>
+
+              <div class="category-grid">
+                <template x-for="cat in categories" :key="cat.id">
+                  <div class="category-card">
+                    <div class="category-header" @click="cat.expanded = !cat.expanded">
+                      <div class="category-title-wrap">
+                        <i class="fa-solid fa-chevron-right chevron-icon" :class="cat.expanded ? 'rotated' : ''"></i>
+                        <span class="color-dot" :class="cat.colorClass.split(' ')[0]"></span>
+                        <span class="font-bold" x-text="cat.name"></span>
+                      </div>
+                      <div class="category-actions">
+                        <button @click.stop="openEditCategory(cat)" class="btn-text-icon"><i class="fa-solid fa-pen"></i></button>
+                        <button @click.stop="deleteCategory(cat.id)" class="btn-text-icon danger"><i class="fa-solid fa-trash"></i></button>
+                      </div>
+                    </div>
+                    
+                    <div x-show="cat.expanded" x-collapse>
+                      <div class="category-body">
+                        <div class="tag-input-group">
+                          <input type="text" x-model="cat.newTagName" placeholder="新しいタグ名" class="input-field input-field-sm">
+                          <button @click="addTagToCategory(cat)" class="btn-secondary shrink-0" style="padding: 0.5rem 1rem; font-size: 0.875rem;">追加</button>
+                        </div>
+                        <div class="tag-list">
+                          <template x-for="tag in getTagsByCategory(cat.id)" :key="tag.id">
+                            <div class="tag-item" @click="openEditTag(tag)">
+                              <span class="tag-badge" :class="tag.colorClass" x-text="tag.name"></span>
+                              <button @click.stop="deleteTag(tag.id)" class="tag-delete-btn"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                          </template>
+                          <template x-if="getTagsByCategory(cat.id).length === 0">
+                            <span class="text-xs" style="color: rgba(255,255,255,0.3); font-style: italic;">タグがありません</span>
+                          </template>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+
+          <!-- 4. SETTINGS VIEW -->
+          <template x-if="currentView === 'settings'">
+            <div class="w-full" style="max-width: 28rem;">
+              <div class="glass-panel-sm p-5">
+                <h3 class="font-bold text-lg mb-2 text-red-400"><i class="fa-solid fa-triangle-exclamation"></i> Danger Zone</h3>
+                <p class="text-sm mb-4" style="color: rgba(255,255,255,0.5);">すべてのデータを初期状態に戻します。</p>
+                <button @click="resetAllData()" class="btn-danger-outline">
+                  データを初期化する
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <!-- 5. AI ASSISTANT VIEW -->
+          <template x-if="currentView === 'ai'">
+            <div class="w-full" style="max-width: 42rem;">
+              <div class="ai-tabs">
+                <button @click="aiTab = 'prompt'" class="ai-tab-btn" :class="aiTab === 'prompt' ? 'active' : 'inactive'">プロンプト生成</button>
+                <button @click="aiTab = 'import'" class="ai-tab-btn" :class="aiTab === 'import' ? 'active' : 'inactive'">JSONインポート</button>
+              </div>
+
+              <div x-show="aiTab === 'prompt'" x-transition:enter="view-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to">
+                <div class="ai-card">
+                  <h2 class="ai-step-title">1. 作ってほしい内容を入力</h2>
+                  <p class="ai-step-desc">例: 「TOEIC頻出の英単語50選」「高校日本史の重要年号」など</p>
+                  <div class="flex gap-2">
+                    <input type="text" x-model="aiTheme" placeholder="テーマを入力..." class="input-field">
+                    <button @click="generatePrompt()" class="btn-primary btn-primary-purple shrink-0">生成</button>
+                  </div>
+                </div>
+
+                <div class="ai-card" x-show="generatedPrompt">
+                  <div class="flex justify-between items-start sm:items-center gap-3 mb-3 flex-col sm:flex-row">
+                    <h2 class="ai-step-title mb-0">2. AI (ChatGPT等) にペースト</h2>
+                    <button @click="copyPrompt()" class="ai-copy-btn" :class="copySuccess ? 'success' : 'normal'">
+                      <i class="fa-solid" :class="copySuccess ? 'fa-check' : 'fa-copy'"></i>
+                      <span x-text="copySuccess ? 'コピーしました！' : 'コピー'"></span>
+                    </button>
+                  </div>
+                  <textarea readonly x-model="generatedPrompt" class="textarea-field" style="height: 16rem; background-color: rgba(0,0,0,0.4); color: rgba(255,255,255,0.8);"></textarea>
+                  <p class="text-xs mt-3 text-center" style="color: rgba(255,255,255,0.5);">コピーしたテキストをAIに送信し、返ってきたJSONコードを「JSONインポート」タブに貼り付けてください。</p>
+                </div>
+              </div>
+
+              <div x-show="aiTab === 'import'" style="display: none;" x-transition:enter="view-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to">
+                <div class="ai-card">
+                  <h2 class="ai-step-title">AIが生成したJSONを貼り付け</h2>
+                  <p class="ai-step-desc">AIから出力された <code>```json ... ```</code> の中身をここに貼り付けてください。</p>
+                  
+                  <textarea x-model="importJsonText" placeholder='{"categories": [...], "tags": [...], "projects": [...]}' class="textarea-field mb-4" style="height: 16rem;"></textarea>
+                  
+                  <button @click="importAiData()" class="btn-primary w-full flex items-center justify-center gap-2" :class="!importJsonText.trim() ? 'disabled' : ''">
+                    <i class="fa-solid fa-download"></i> アプリに取り込む
+                  </button>
+                </div>
+              </div>
+            </div>
+          </template>
+
+        </main>
+
+        <!-- FAB for Card List -->
+        <button x-show="currentView === 'cardList'" @click="openCardModal()" class="fab-btn fab-purple" title="カードを追加">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+      </div>
+
+    </div> <!-- End of App Container -->
+
+    <!-- ==========================================
+         MODALS & DIALOGS
+    =========================================== -->
+    
+    <!-- Custom Dialog (Alert/Confirm) -->
+    <div x-show="dialog.show" class="modal-overlay" style="display: none; z-index: 100;"
+         x-transition:enter="modal-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to"
+         x-transition:leave="modal-leave-active" x-transition:leave-start="modal-enter-to" x-transition:leave-end="modal-leave-to">
+      <div class="modal-content" style="max-width: 24rem;" @click.away="if(dialog.type === 'alert') cancelDialog()">
+        <h2 class="modal-title" :class="dialog.type === 'confirm' ? 'text-red-400' : ''" x-text="dialog.title"></h2>
+        <div class="modal-body" style="margin-bottom: 1.5rem;">
+          <p style="color: rgba(255,255,255,0.8); white-space: pre-wrap; font-size: 0.875rem;" x-text="dialog.message"></p>
+        </div>
+        <div class="modal-footer">
+          <button x-show="dialog.type === 'confirm'" @click="cancelDialog()" class="btn-secondary" x-text="dialog.cancelText"></button>
+          <button @click="confirmDialog()" :class="dialog.type === 'confirm' ? 'btn-danger' : 'btn-primary'" x-text="dialog.confirmText"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 完了画面 -->
+    <div x-show="isCompleted" class="complete-overlay" style="display: none;" 
+         x-transition:enter="complete-enter-active" x-transition:enter-start="complete-enter-from" x-transition:enter-end="complete-enter-to"
+         x-transition:leave="complete-leave-active" x-transition:leave-start="complete-enter-to" x-transition:leave-end="complete-leave-to">
+      <div class="complete-card">
+        <div class="complete-bg"></div>
+        
+        <h2 class="complete-title">Session Complete!</h2>
+        <p class="complete-desc">今日の学習が完了しました🎉</p>
+        
+        <div class="donut-container">
+          <svg viewBox="0 0 36 36" class="donut-svg">
+            <path class="donut-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5" />
+            <path class="donut-fill" :stroke-dasharray="`${donutPercentage}, 100`" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+          </svg>
+          <div class="donut-text-wrap">
+            <span class="donut-val" x-text="Math.round(donutPercentage) + '%'"></span>
+            <span class="donut-label">Accuracy</span>
+          </div>
+        </div>
+
+        <div class="complete-stats">
+          <div class="complete-stat-item">
+            <div class="complete-stat-icon like"><i class="fa-solid fa-check"></i></div>
+            <div class="complete-stat-val like" x-text="sessionStats.like"></div>
+            <div class="complete-stat-label">覚えた</div>
+          </div>
+          <div class="complete-stat-item">
+            <div class="complete-stat-icon nope"><i class="fa-solid fa-xmark"></i></div>
+            <div class="complete-stat-val nope" x-text="sessionStats.nope"></div>
+            <div class="complete-stat-label">まだ</div>
+          </div>
+        </div>
+
+        <button @click="resetStudy()" class="btn-large">
+          <i class="fa-solid fa-rotate-right"></i> もう一度学習する
+        </button>
+        <button @click="goHome()" class="btn-large-glass">
+          ホームに戻る
+        </button>
+      </div>
+    </div>
+
+    <!-- プロジェクト追加モーダル -->
+    <div x-show="showProjectModal" class="modal-overlay" style="display: none;" 
+         x-transition:enter="modal-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to"
+         x-transition:leave="modal-leave-active" x-transition:leave-start="modal-enter-to" x-transition:leave-end="modal-leave-to">
+      <div class="modal-content" @click.away="showProjectModal = false">
+        <h2 class="modal-title">新規プロジェクト</h2>
+        
+        <div x-data="{ open: false }" class="select-box">
+          <div @click="open = !open" class="select-trigger">
+            <span x-text="newProjectCategoryId ? categoryMap[newProjectCategoryId]?.name : 'カテゴリを選択 (必須)'" :style="!newProjectCategoryId ? 'color: rgba(255,255,255,0.5);' : ''"></span>
+            <i class="fa-solid fa-chevron-down text-xs" style="color: rgba(255,255,255,0.5); transition: transform 0.3s;" :style="open ? 'transform: rotate(180deg);' : ''"></i>
+          </div>
+          <div x-show="open" @click.away="open = false" x-transition class="select-dropdown" style="display: none;">
+            <template x-for="cat in categories" :key="cat.id">
+              <div @click="newProjectCategoryId = cat.id; open = false" class="select-option">
+                <span class="color-dot" :class="cat.colorClass.split(' ')[0]"></span>
+                <span x-text="cat.name"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <input type="text" x-model="newProjectTitle" placeholder="プロジェクト名 (例: 漢文・再読文字)" class="input-field mb-3">
+        <input type="text" x-model="newProjectDesc" placeholder="説明 (任意)" class="input-field mb-6">
+        
+        <div class="modal-footer">
+          <button @click="showProjectModal = false" class="btn-secondary">キャンセル</button>
+          <button @click="addProject()" class="btn-primary" :class="!newProjectCategoryId || !newProjectTitle ? 'disabled' : ''">作成</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- カード追加・編集モーダル -->
+    <div x-show="showCardModal" class="modal-overlay" style="display: none;" 
+         x-transition:enter="modal-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to"
+         x-transition:leave="modal-leave-active" x-transition:leave-start="modal-enter-to" x-transition:leave-end="modal-leave-to">
+      <div class="modal-content" style="max-width: 32rem;" @click.away="showCardModal = false">
+        <h2 class="modal-title" x-text="editingCardIndex !== null ? 'カードを編集' : 'カードを追加'"></h2>
+        
+        <div class="modal-body hide-scrollbar">
+          <div class="mb-4">
+            <label class="text-xs font-bold mb-1 block" style="color: rgba(255,255,255,0.5);">表面</label>
+            <input type="text" x-ref="frontInput" x-model="newCardFront" placeholder="例: light, 未" class="input-field">
+          </div>
+          
+          <div class="detail-group">
+            <div class="detail-header" @click="isBackDetailsExpanded = !isBackDetailsExpanded">
+              <span class="text-sm font-bold" style="color: rgba(255,255,255,0.8);">裏面 (意味・詳細)</span>
+              <i class="fa-solid fa-chevron-right text-xs" style="color: rgba(255,255,255,0.5); transition: transform 0.3s;" :style="isBackDetailsExpanded ? 'transform: rotate(90deg);' : ''"></i>
+            </div>
+            
+            <div x-show="isBackDetailsExpanded" x-collapse>
+              <div class="detail-body">
+                <template x-for="(detail, index) in newCardDetails" :key="'detail_' + index">
+                  <div class="detail-item">
+                    <div class="detail-item-header" @click="detail.expanded = !detail.expanded">
+                      <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-chevron-right text-xs" style="color: rgba(255,255,255,0.5); transition: transform 0.3s;" :style="detail.expanded ? 'transform: rotate(90deg);' : ''"></i>
+                        <span class="text-sm font-bold" style="color: rgba(255,255,255,0.8);" x-text="detail.value ? detail.value : '新しい意味'"></span>
+                      </div>
+                      <button @click.stop="removeDetail(index)" class="btn-text-icon danger" style="padding: 0.25rem;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    
+                    <div x-show="detail.expanded" x-collapse>
+                      <div class="detail-item-body">
+                        <div x-data="{ open: false }" class="select-box" style="margin-bottom: 0.5rem;">
+                          <div @click="open = !open" class="select-trigger" style="padding: 0.5rem 0.75rem; font-size: 0.875rem; background-color: rgba(0,0,0,0.4);">
+                            <span x-text="detail.tagId ? tagMap[detail.tagId]?.name : 'タグなし (選択)'" :style="!detail.tagId ? 'color: rgba(255,255,255,0.5);' : ''"></span>
+                            <i class="fa-solid fa-chevron-down text-xs" style="color: rgba(255,255,255,0.5); transition: transform 0.3s;" :style="open ? 'transform: rotate(180deg);' : ''"></i>
+                          </div>
+                          <div x-show="open" @click.away="open = false" x-transition class="select-dropdown" style="display: none;">
+                            <div @click="detail.tagId = ''; open = false" class="select-option" style="font-size: 0.875rem; color: rgba(255,255,255,0.7);">タグなし</div>
+                            <template x-for="tag in getTagsForCurrentProject()" :key="tag.id">
+                              <div @click="detail.tagId = tag.id; open = false" class="select-option" style="font-size: 0.875rem;">
+                                <span class="color-dot" :class="tag.colorClass.split(' ')[0]"></span>
+                                <span x-text="tag.name"></span>
+                              </div>
+                            </template>
+                            <template x-if="getTagsForCurrentProject().length === 0">
+                              <div class="px-3 py-2 text-sm" style="color: rgba(255,255,255,0.3); font-style: italic;">このカテゴリにタグがありません</div>
+                            </template>
+                          </div>
+                        </div>
+                        <input type="text" x-model="detail.value" placeholder="意味・内容" class="input-field input-field-sm detail-value-input" style="background-color: rgba(0,0,0,0.4);">
+                      </div>
+                    </div>
+                  </div>
+                </template>
+                
+                <button @click="addDetail()" class="btn-add-detail">
+                  <i class="fa-solid fa-plus"></i> 意味を追加
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-xs font-bold mb-1 block" style="color: rgba(255,255,255,0.5);">例文 (任意)</label>
+            <textarea x-model="newCardExample" placeholder="例: Turn on the light." rows="2" class="textarea-field"></textarea>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button @click="showCardModal = false" class="btn-secondary">キャンセル</button>
+          <button @click="saveCard()" class="btn-primary btn-primary-purple" x-text="editingCardIndex !== null ? '保存' : '追加'"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- カテゴリ編集モーダル -->
+    <div x-show="showEditCategoryModal" class="modal-overlay" style="display: none;" 
+         x-transition:enter="modal-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to"
+         x-transition:leave="modal-leave-active" x-transition:leave-start="modal-enter-to" x-transition:leave-end="modal-leave-to">
+      <div class="modal-content" @click.away="showEditCategoryModal = false">
+        <h2 class="modal-title">カテゴリを編集</h2>
+        <input type="text" x-model="editingCategory.name" placeholder="カテゴリ名" class="input-field mb-4">
+        
+        <label class="text-xs font-bold mb-2 block" style="color: rgba(255,255,255,0.5);">カラー</label>
+        <div class="color-picker">
+          <template x-for="color in tagColors" :key="color">
+            <button @click="editingCategory.colorClass = color" 
+                    class="color-btn"
+                    :style="`background-color: ${getColorCode(color)}`"
+                    :class="editingCategory.colorClass === color ? 'selected' : ''">
+            </button>
+          </template>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="showEditCategoryModal = false" class="btn-secondary">キャンセル</button>
+          <button @click="saveCategoryEdit()" class="btn-primary" :class="!editingCategory.name ? 'disabled' : ''">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- タグ編集モーダル -->
+    <div x-show="showEditTagModal" class="modal-overlay" style="display: none;" 
+         x-transition:enter="modal-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to"
+         x-transition:leave="modal-leave-active" x-transition:leave-start="modal-enter-to" x-transition:leave-end="modal-leave-to">
+      <div class="modal-content" @click.away="showEditTagModal = false">
+        <h2 class="modal-title">タグを編集</h2>
+        <input type="text" x-model="editingTag.name" placeholder="タグ名" class="input-field mb-4">
+        
+        <label class="text-xs font-bold mb-2 block" style="color: rgba(255,255,255,0.5);">カラー</label>
+        <div class="color-picker">
+          <template x-for="color in tagColors" :key="color">
+            <button @click="editingTag.colorClass = color" 
+                    class="color-btn"
+                    :style="`background-color: ${getColorCode(color)}`"
+                    :class="editingTag.colorClass === color ? 'selected' : ''">
+            </button>
+          </template>
+        </div>
+
+        <div class="modal-footer">
+          <button @click="showEditTagModal = false" class="btn-secondary">キャンセル</button>
+          <button @click="saveTagEdit()" class="btn-primary" :class="!editingTag.name ? 'disabled' : ''">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- プロジェクト編集モーダル -->
+    <div x-show="showEditProjectModal" class="modal-overlay" style="display: none;" 
+         x-transition:enter="modal-enter-active" x-transition:enter-start="modal-enter-from" x-transition:enter-end="modal-enter-to"
+         x-transition:leave="modal-leave-active" x-transition:leave-start="modal-enter-to" x-transition:leave-end="modal-leave-to">
+      <div class="modal-content" @click.away="showEditProjectModal = false">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="modal-title mb-0">プロジェクトを編集</h2>
+          <button @click="deleteProject(editingProject.id)" class="btn-text-icon danger" title="プロジェクトを削除"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        
+        <div x-data="{ open: false }" class="select-box">
+          <div @click="open = !open" class="select-trigger">
+            <span x-text="editingProject.categoryId ? categoryMap[editingProject.categoryId]?.name : 'カテゴリを選択 (必須)'" :style="!editingProject.categoryId ? 'color: rgba(255,255,255,0.5);' : ''"></span>
+            <i class="fa-solid fa-chevron-down text-xs" style="color: rgba(255,255,255,0.5); transition: transform 0.3s;" :style="open ? 'transform: rotate(180deg);' : ''"></i>
+          </div>
+          <div x-show="open" @click.away="open = false" x-transition class="select-dropdown" style="display: none;">
+            <template x-for="cat in categories" :key="cat.id">
+              <div @click="editingProject.categoryId = cat.id; open = false" class="select-option">
+                <span class="color-dot" :class="cat.colorClass.split(' ')[0]"></span>
+                <span x-text="cat.name"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <input type="text" x-model="editingProject.title" placeholder="プロジェクト名" class="input-field mb-3">
+        <input type="text" x-model="editingProject.description" placeholder="説明 (任意)" class="input-field mb-6">
+        
+        <div class="modal-footer">
+          <button @click="showEditProjectModal = false" class="btn-secondary">キャンセル</button>
+          <button @click="saveProjectEdit()" class="btn-primary" :class="!editingProject.categoryId || !editingProject.title ? 'disabled' : ''">保存</button>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
