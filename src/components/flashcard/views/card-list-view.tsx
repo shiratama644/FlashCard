@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import { useFlashcard } from "@/features/flashcard/context/flashcard-context";
-import { SubViewHeader } from "@/components/layout/sub-view-header";
 import { CardFormModal } from "@/components/flashcard/card-form-modal";
 import type { Card } from "@/types/flashcard";
 
-export default function CardListPage() {
+export function CardListView() {
   const {
     activeProject,
     activeProjectId,
@@ -23,13 +22,10 @@ export default function CardListPage() {
 
   if (!activeProject || !activeProjectId) {
     return (
-      <div className="view-container bg-blur" style={{ position: "relative" }}>
-        <SubViewHeader title="カード一覧" backHref="/study" />
-        <main className="view-main">
-          <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
-            プロジェクトが選択されていません
-          </div>
-        </main>
+      <div className="w-full">
+        <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+          プロジェクトが選択されていません
+        </div>
       </div>
     );
   }
@@ -56,39 +52,35 @@ export default function CardListPage() {
   };
 
   return (
-    <div className="view-container bg-blur" style={{ position: "relative" }}>
-      <SubViewHeader title="カード一覧" backHref="/study" icon="fa-list" iconStyle={{ color: "rgba(255,255,255,0.8)" }} />
+    <>
+      <div className="w-full">
+        {cards.length === 0 && (
+          <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+            カードがありません
+          </div>
+        )}
 
-      <main className="view-main">
-        <div className="w-full">
-          {cards.length === 0 && (
-            <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
-              カードがありません
-            </div>
-          )}
-
-          <div className="list-grid">
-            {cards.map((card, index) => (
-              <div key={`${card.front}_${index}`} className="card-list-item">
-                <div className="list-item-info">
-                  <div className="list-item-title">{card.front}</div>
-                  <div className="list-item-desc">
-                    {card.backDetails.map((d) => d.value).join(", ")}
-                  </div>
-                </div>
-                <div className="list-item-actions">
-                  <button onClick={() => openCardModal(index)} className="btn-small-icon btn-edit">
-                    <i className="fa-solid fa-pen" />
-                  </button>
-                  <button onClick={() => handleDelete(index)} className="btn-small-icon btn-delete">
-                    <i className="fa-solid fa-trash" />
-                  </button>
+        <div className="list-grid">
+          {cards.map((card, index) => (
+            <div key={`${card.front}_${index}`} className="card-list-item">
+              <div className="list-item-info">
+                <div className="list-item-title">{card.front}</div>
+                <div className="list-item-desc">
+                  {card.backDetails.map((d) => d.value).join(", ")}
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="list-item-actions">
+                <button onClick={() => openCardModal(index)} className="btn-small-icon btn-edit">
+                  <i className="fa-solid fa-pen" />
+                </button>
+                <button onClick={() => handleDelete(index)} className="btn-small-icon btn-delete">
+                  <i className="fa-solid fa-trash" />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      </main>
+      </div>
 
       <button onClick={() => openCardModal()} className="fab-btn fab-purple" title="カードを追加">
         <i className="fa-solid fa-plus" />
@@ -103,6 +95,6 @@ export default function CardListPage() {
           onClose={() => setShowCardModal(false)}
         />
       )}
-    </div>
+    </>
   );
 }

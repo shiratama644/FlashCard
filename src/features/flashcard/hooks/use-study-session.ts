@@ -29,11 +29,24 @@ type OverlayRefs = {
   nopeIcon: HTMLElement | null;
 };
 
+type StudySessionOptions = {
+  /** Reverse-mode flag applied (without animation) when a session starts. */
+  reverse?: boolean;
+  /** Bumped by the caller on every `openProject` to (re)start the session. */
+  sessionNonce?: number;
+  /** When false, global keyboard shortcuts are ignored (view not active). */
+  enabled?: boolean;
+};
+
 export function useStudySession(
   project: Project | null,
   tagMap: Record<string | number, Tag>,
   onCardSwiped?: (projectId: string | number, cardIndex: number, direction: 1 | -1, card: Card) => void,
+  options?: StudySessionOptions,
 ) {
+  const reverse = options?.reverse ?? false;
+  const sessionNonce = options?.sessionNonce ?? 0;
+  const enabled = options?.enabled ?? true;
   const [currentCards, setCurrentCards] = useState<Card[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -59,7 +72,6 @@ export function useStudySession(
 
   const dragLoopId = useRef<number | null>(null);
   const statsRef = useRef<SessionStats>({ like: 0, nope: 0 });
-  const prevProjectId = useRef<string | number | null>(null);
 
   const getOverlayRefs = useCallback((): OverlayRefs => ({
     likeStamp: likeStampRef.current,
@@ -69,17 +81,20 @@ export function useStudySession(
     nopeIcon: nopeIconRef.current,
   }), []);
 
+  // Start a fresh session whenever the caller opens a project (sessionNonce bump).
+  // Mirrors old-site `openProject`, which resets all session state and applies
+  // the reverse flag directly (no flip animation).
   useEffect(() => {
-    if (project && project.id !== prevProjectId.current) {
-      prevProjectId.current = project.id;
-      setCurrentCards([...project.cards]);
-      setCurrentIndex(0);
-      setIsFlipped(false);
-      setIsCompleted(false);
-      setSessionStats({ like: 0, nope: 0 });
-      statsRef.current = { like: 0, nope: 0 };
-    }
-  }, [project]);
+    if (!project) return;
+    setCurrentCards([...project.cards]);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setIsCompleted(false);
+    setIsReverseMode(reverse);
+    setSessionStats({ like: 0, nope: 0 });
+    statsRef.current = { like: 0, nope: 0 };
+    setDonutPercentage(0);
+  }, [sessionNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flipCard = useCallback(() => {
     if (isAnimating) return;
@@ -359,7 +374,7 @@ export function useStudySession(
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (isCompleted || isAnimating) return;
+      if (!enabled || isCompleted || isAnimating) return;
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
@@ -379,7 +394,7 @@ export function useStudySession(
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isCompleted, isAnimating, swipeOut, flipCard]);
+  }, [enabled, isCompleted, isAnimating, swipeOut, flipCard]);
 
   // Cleanup drag loop on unmount
   useEffect(() => {
