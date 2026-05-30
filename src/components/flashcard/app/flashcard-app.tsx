@@ -28,7 +28,7 @@ const isSubView = (v: View): v is SubView => SUB_VIEWS.includes(v as SubView);
  */
 export function FlashcardApp() {
   const { activeProject, setActiveProjectId, forceSave } = useFlashcard();
-  const { weekDays, displayStreak, streakMessage, streakData, animateStreak, markStudyComplete } = useStreak();
+  const { weekDays, displayStreak, streakMessage, animateStreak, markStudyComplete } = useStreak();
 
   const [currentView, setCurrentView] = useState<View>("streak");
   const [reverseMode, setReverseMode] = useState(false);
@@ -124,14 +124,12 @@ export function FlashcardApp() {
       <ViewTransition
         show={currentView === "streak"}
         direction="fade"
-        className="view-container flex flex-col items-center justify-between p-6 z-50"
-        style={{ backgroundColor: "#13151a" }}
+        className="view-container streak-view"
       >
         <StreakView
           weekDays={weekDays}
           displayStreak={displayStreak}
           streakMessage={streakMessage}
-          studyHistoryCount={streakData.studyHistory.length}
           onContinue={() => setCurrentView("home")}
         />
       </ViewTransition>
