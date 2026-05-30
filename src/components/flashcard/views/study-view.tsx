@@ -19,15 +19,17 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
 
   // Faithful old-site logic: right swipe → mastered (immediately), left → learning.
   // The swiped card is identified by reference (matching old-site's in-place update),
-  // falling back to the session index so shuffled order stays correct.
+  // falling back to content match so an edited/replaced reference still updates the
+  // correct card. Never fall back to the shuffled session index.
   const handleCardSwiped = useCallback(
-    (projectId: string | number, cardIdx: number, direction: 1 | -1, card: Card) => {
+    (projectId: string | number, _cardIdx: number, direction: 1 | -1, card: Card) => {
       setProjects((prev) =>
         prev.map((p) => {
           if (p.id !== projectId) return p;
           const newCards = [...p.cards];
           let origIdx = p.cards.indexOf(card);
-          if (origIdx === -1) origIdx = cardIdx;
+          if (origIdx === -1) origIdx = p.cards.findIndex((c) => c.front === card.front);
+          if (origIdx === -1) return p;
           const existing = newCards[origIdx];
           if (!existing) return p;
           const stats = existing.stats ?? { likes: 0, nopes: 0, status: "new" as const };
