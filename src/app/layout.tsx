@@ -14,10 +14,30 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+// On GitHub Pages (static export) custom HTTP headers are not available, so the
+// CSP that next.config.ts normally serves is delivered via a <meta> tag instead.
+// (`frame-ancestors`/`X-Frame-Options` cannot be expressed in a meta CSP, so
+// clickjacking protection still relies on host-level config when available.)
+const isStaticExport = process.env.BUILD_STATIC_EXPORT === "true";
+const staticCsp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+  "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+].join("; ");
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
       <head>
+        {isStaticExport && (
+          <>
+            <meta httpEquiv="Content-Security-Policy" content={staticCsp} />
+            <meta name="referrer" content="strict-origin-when-cross-origin" />
+          </>
+        )}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
