@@ -49,18 +49,13 @@ export function ProjectFormModal({
           <h2 className="modal-title">新規プロジェクト</h2>
         )}
 
-        <div className="select-box" style={{ position: "relative", marginBottom: "0.75rem" }}>
+        <div className="select-box">
           <div className="select-trigger" onClick={() => setDropdownOpen(!dropdownOpen)}>
-            <span style={!categoryId ? { color: "rgba(255,255,255,0.5)" } : undefined}>
+            <span className={!categoryId ? "select-placeholder" : ""}>
               {selectedCat ? selectedCat.name : "カテゴリを選択 (必須)"}
             </span>
             <i
-              className="fa-solid fa-chevron-down text-xs"
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                transition: "transform 0.3s",
-                transform: dropdownOpen ? "rotate(180deg)" : "none",
-              }}
+              className={`fa-solid fa-chevron-down select-icon ${dropdownOpen ? "rotated" : ""}`}
             />
           </div>
           {dropdownOpen && (

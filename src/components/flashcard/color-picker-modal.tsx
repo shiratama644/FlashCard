@@ -27,7 +27,7 @@ export function ColorPickerModal({ title, name: initialName, colorClass: initial
           className="input-field mb-4"
         />
 
-        <label className="text-xs font-bold mb-2 block" style={{ color: "rgba(255,255,255,0.5)" }}>
+        <label className="input-label mb-2">
           カラー
         </label>
         <div className="color-picker">

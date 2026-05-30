@@ -23,7 +23,7 @@ export function CardListView() {
   if (!activeProject || !activeProjectId) {
     return (
       <div className="w-full">
-        <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+        <div className="empty-text">
           プロジェクトが選択されていません
         </div>
       </div>
@@ -55,7 +55,7 @@ export function CardListView() {
     <>
       <div className="w-full">
         {cards.length === 0 && (
-          <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <div className="empty-text">
             カードがありません
           </div>
         )}

@@ -137,7 +137,7 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
           <div className="empty-state">
             <i className="fa-regular fa-folder-open empty-icon" />
             <h2 className="text-xl font-bold mb-2">No Cards Yet</h2>
-            <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.6)" }}>
+            <p className="settings-desc mb-6">
               カード一覧から単語を追加してください
             </p>
             <button onClick={onOpenCardList} className="btn-secondary w-full">

@@ -62,12 +62,12 @@ export function CardFormModal({ card, projectTags, tagMap, onSave, onClose }: Ca
 
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal-content" style={{ maxWidth: "32rem" }}>
+      <div className="modal-content modal-content-md">
         <h2 className="modal-title">{card ? "カードを編集" : "カードを追加"}</h2>
 
         <div className="modal-body hide-scrollbar">
           <div className="mb-4">
-            <label className="text-xs font-bold mb-1 block" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <label className="input-label">
               表面
             </label>
             <input
@@ -84,18 +84,12 @@ export function CardFormModal({ card, projectTags, tagMap, onSave, onClose }: Ca
             <div
               className="detail-header"
               onClick={() => setIsBackDetailsExpanded(!isBackDetailsExpanded)}
-              style={{ cursor: "pointer" }}
             >
-              <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.8)" }}>
+              <span className="detail-header-title">
                 裏面 (意味・詳細)
               </span>
               <i
-                className="fa-solid fa-chevron-right text-xs"
-                style={{
-                  color: "rgba(255,255,255,0.5)",
-                  transition: "transform 0.3s",
-                  transform: isBackDetailsExpanded ? "rotate(90deg)" : "none",
-                }}
+                className={`fa-solid fa-chevron-right select-icon ${isBackDetailsExpanded ? "rotated" : ""}`}
               />
             </div>
 
@@ -106,25 +100,18 @@ export function CardFormModal({ card, projectTags, tagMap, onSave, onClose }: Ca
                     <div
                       className="detail-item-header"
                       onClick={() => updateDetail(index, "expanded", !detail.expanded)}
-                      style={{ cursor: "pointer" }}
                     >
                       <div className="flex items-center gap-2">
                         <i
-                          className="fa-solid fa-chevron-right text-xs"
-                          style={{
-                            color: "rgba(255,255,255,0.5)",
-                            transition: "transform 0.3s",
-                            transform: detail.expanded ? "rotate(90deg)" : "none",
-                          }}
+                          className={`fa-solid fa-chevron-right select-icon ${detail.expanded ? "rotated" : ""}`}
                         />
-                        <span className="text-sm font-bold" style={{ color: "rgba(255,255,255,0.8)" }}>
+                        <span className="detail-header-title">
                           {detail.value || "新しい意味"}
                         </span>
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); removeDetail(index); }}
-                        className="btn-text-icon danger"
-                        style={{ padding: "0.25rem" }}
+                        className="btn-text-icon btn-text-icon-sm danger"
                       >
                         <i className="fa-solid fa-trash" />
                       </button>
@@ -143,8 +130,7 @@ export function CardFormModal({ card, projectTags, tagMap, onSave, onClose }: Ca
                           value={detail.value}
                           onChange={(e) => updateDetail(index, "value", e.target.value)}
                           placeholder="意味・内容"
-                          className="input-field input-field-sm detail-value-input"
-                          style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+                          className="input-field input-field-sm input-field-dark detail-value-input"
                         />
                       </div>
                     )}
@@ -159,7 +145,7 @@ export function CardFormModal({ card, projectTags, tagMap, onSave, onClose }: Ca
           </div>
 
           <div>
-            <label className="text-xs font-bold mb-1 block" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <label className="input-label">
               例文 (任意)
             </label>
             <textarea
@@ -198,29 +184,22 @@ function TagSelector({
   const selectedTag = selectedTagId ? tagMap[selectedTagId] : null;
 
   return (
-    <div className="select-box" style={{ marginBottom: "0.5rem", position: "relative" }}>
+    <div className="select-box">
       <div
-        className="select-trigger"
+        className="select-trigger select-trigger-sm input-field-dark"
         onClick={() => setOpen(!open)}
-        style={{ padding: "0.5rem 0.75rem", fontSize: "0.875rem", backgroundColor: "rgba(0,0,0,0.4)" }}
       >
-        <span style={!selectedTagId ? { color: "rgba(255,255,255,0.5)" } : undefined}>
+        <span className={!selectedTagId ? "select-placeholder" : ""}>
           {selectedTag ? selectedTag.name : "タグなし (選択)"}
         </span>
         <i
-          className="fa-solid fa-chevron-down text-xs"
-          style={{
-            color: "rgba(255,255,255,0.5)",
-            transition: "transform 0.3s",
-            transform: open ? "rotate(180deg)" : "none",
-          }}
+          className={`fa-solid fa-chevron-down select-icon ${open ? "rotated" : ""}`}
         />
       </div>
       {open && (
         <div className="select-dropdown">
           <div
-            className="select-option"
-            style={{ fontSize: "0.875rem", color: "rgba(255,255,255,0.7)" }}
+            className="select-option select-option-sm"
             onClick={() => { onSelect(""); setOpen(false); }}
           >
             タグなし
@@ -228,8 +207,7 @@ function TagSelector({
           {tags.map((tag) => (
             <div
               key={tag.id}
-              className="select-option"
-              style={{ fontSize: "0.875rem" }}
+              className="select-option select-option-sm"
               onClick={() => { onSelect(String(tag.id)); setOpen(false); }}
             >
               <span className="color-dot" style={{ backgroundColor: getColorCode(tag.colorClass) }} />
@@ -237,7 +215,7 @@ function TagSelector({
             </div>
           ))}
           {tags.length === 0 && (
-            <div className="px-3 py-2 text-sm" style={{ color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
+            <div className="select-empty-text">
               このカテゴリにタグがありません
             </div>
           )}

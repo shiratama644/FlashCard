@@ -90,7 +90,7 @@ export function AiView() {
   }, [importJsonText, importAiData]);
 
   return (
-    <div className="w-full" style={{ maxWidth: "42rem" }}>
+    <div className="ai-container">
       <div className="ai-tabs">
         <button
           onClick={() => setAiTab("prompt")}
@@ -107,7 +107,7 @@ export function AiView() {
       </div>
 
       {aiTab === "prompt" && (
-        <div>
+        <div key="prompt" className="tab-enter-anim">
           <div className="ai-card">
             <h2 className="ai-step-title">1. 作ってほしい内容を入力</h2>
             <p className="ai-step-desc">
@@ -143,10 +143,9 @@ export function AiView() {
               <textarea
                 readOnly
                 value={generatedPrompt}
-                className="textarea-field"
-                style={{ height: "16rem", backgroundColor: "rgba(0,0,0,0.4)", color: "rgba(255,255,255,0.8)" }}
+                className="textarea-field ai-textarea-readonly"
               />
-              <p className="text-xs mt-3 text-center" style={{ color: "rgba(255,255,255,0.5)" }}>
+              <p className="ai-help-text">
                 コピーしたテキストをAIに送信し、返ってきたJSONコードを「JSONインポート」タブに貼り付けてください。
               </p>
             </div>
@@ -155,7 +154,7 @@ export function AiView() {
       )}
 
       {aiTab === "import" && (
-        <div>
+        <div key="import" className="tab-enter-anim">
           <div className="ai-card">
             <h2 className="ai-step-title">AIが生成したJSONを貼り付け</h2>
             <p className="ai-step-desc">
@@ -165,8 +164,7 @@ export function AiView() {
               value={importJsonText}
               onChange={(e) => setImportJsonText(e.target.value)}
               placeholder='{"categories": [...], "tags": [...], "projects": [...]}'
-              className="textarea-field mb-4"
-              style={{ height: "16rem" }}
+              className="textarea-field ai-textarea"
             />
             <button
               onClick={handleImport}
