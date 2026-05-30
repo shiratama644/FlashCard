@@ -35,6 +35,8 @@ export function FlashcardApp() {
   const [sessionNonce, setSessionNonce] = useState(0);
   const [lastSubView, setLastSubView] = useState<SubView>("cardList");
   const goHomeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentViewRef = useRef(currentView);
+  currentViewRef.current = currentView;
 
   // GSAP global frame rate — matches old-site `gsap.ticker.fps(120)`.
   useEffect(() => {
@@ -67,10 +69,7 @@ export function FlashcardApp() {
     setCurrentView("home");
     if (goHomeTimer.current) clearTimeout(goHomeTimer.current);
     goHomeTimer.current = setTimeout(() => {
-      setCurrentView((view) => {
-        if (view === "home") setActiveProjectId(null);
-        return view;
-      });
+      if (currentViewRef.current === "home") setActiveProjectId(null);
     }, 300);
   }, [forceSave, setActiveProjectId]);
 
