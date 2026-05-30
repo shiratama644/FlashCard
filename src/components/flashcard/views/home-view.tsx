@@ -1,47 +1,33 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useFlashcard } from "@/features/flashcard/context/flashcard-context";
 import { ProjectFormModal } from "@/components/flashcard/project-form-modal";
 import type { Project } from "@/types/flashcard";
 
-export default function HomeViewPage() {
-  const router = useRouter();
+type HomeViewProps = {
+  onOpenProject: (projectId: string | number, isReverse?: boolean) => void;
+  onOpenStats: (projectId: string | number) => void;
+  onOpenAi: () => void;
+  onOpenCategories: () => void;
+  onOpenSettings: () => void;
+};
+
+export function HomeView({ onOpenProject, onOpenStats, onOpenAi, onOpenCategories, onOpenSettings }: HomeViewProps) {
   const {
     projects,
     categoryMap,
     addProject,
     deleteProject,
     saveProjectEdit,
-    setActiveProjectId,
     showConfirm,
     addToast,
     categories,
     tags,
-    forceSave,
   } = useFlashcard();
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-
-  const openProject = useCallback(
-    (projectId: string | number, isReverse = false) => {
-      setActiveProjectId(projectId);
-      const params = isReverse ? "?reverse=true" : "";
-      router.push(`/study${params}`);
-    },
-    [setActiveProjectId, router],
-  );
-
-  const openStats = useCallback(
-    (projectId: string | number) => {
-      setActiveProjectId(projectId);
-      router.push("/stats");
-    },
-    [setActiveProjectId, router],
-  );
 
   const shareProject = useCallback(
     async (project: Project) => {
@@ -112,21 +98,21 @@ export default function HomeViewPage() {
   );
 
   return (
-    <div className="view-container" style={{ position: "relative" }}>
+    <>
       <header className="view-header">
         <h1 className="view-title">
           <i className="fa-solid fa-layer-group text-purple-400" /> Projects
         </h1>
         <div className="flex gap-3">
-          <Link href="/ai" className="btn-icon btn-gradient-purple" title="AIで生成">
+          <button onClick={onOpenAi} className="btn-icon btn-gradient-purple" title="AIで生成">
             <i className="fa-solid fa-wand-magic-sparkles" />
-          </Link>
-          <Link href="/categories" className="btn-icon btn-glass" title="カテゴリ・タグ管理">
+          </button>
+          <button onClick={onOpenCategories} className="btn-icon btn-glass" title="カテゴリ・タグ管理">
             <i className="fa-solid fa-folder-tree" />
-          </Link>
-          <Link href="/settings" className="btn-icon btn-glass" title="設定">
+          </button>
+          <button onClick={onOpenSettings} className="btn-icon btn-glass" title="設定">
             <i className="fa-solid fa-gear" />
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -136,7 +122,7 @@ export default function HomeViewPage() {
             <div
               key={project.id}
               className="project-card"
-              onClick={() => openProject(project.id)}
+              onClick={() => onOpenProject(project.id)}
             >
               <div className="project-card-bg" />
               <div className="project-card-header">
@@ -160,7 +146,7 @@ export default function HomeViewPage() {
                     <i className="fa-solid fa-share-nodes text-sm" />
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); openProject(project.id, true); }}
+                    onClick={(e) => { e.stopPropagation(); onOpenProject(project.id, true); }}
                     className="btn-icon btn-panel"
                     style={{ width: "2.5rem", height: "2.5rem" }}
                     title="裏面(意味)から学習"
@@ -168,7 +154,7 @@ export default function HomeViewPage() {
                     <i className="fa-solid fa-right-left text-sm" />
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); openStats(project.id); }}
+                    onClick={(e) => { e.stopPropagation(); onOpenStats(project.id); }}
                     className="btn-icon btn-panel"
                     style={{ width: "2.5rem", height: "2.5rem" }}
                     title="統計を見る"
@@ -228,6 +214,6 @@ export default function HomeViewPage() {
           onClose={() => setEditingProject(null)}
         />
       )}
-    </div>
+    </>
   );
 }

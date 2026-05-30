@@ -1,40 +1,41 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useFlashcard } from "@/features/flashcard/context/flashcard-context";
 import { useStudySession } from "@/features/flashcard/hooks/use-study-session";
-import { useStreak } from "@/features/flashcard/hooks/use-streak";
-import type { Card } from "@/types/flashcard";
+import type { Card, CardStatus } from "@/types/flashcard";
 
-export default function StudyViewPage() {
-  const searchParams = useSearchParams();
+type StudyViewProps = {
+  reverse: boolean;
+  sessionNonce: number;
+  active: boolean;
+  onBack: () => void;
+  onOpenCardList: () => void;
+  onStudyComplete: () => void;
+};
 
-  const {
-    activeProject,
-    tagMap,
-    setProjects,
-    forceSave,
-  } = useFlashcard();
+export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardList, onStudyComplete }: StudyViewProps) {
+  const { activeProject, tagMap, setProjects, forceSave } = useFlashcard();
 
-  const { markStudyComplete } = useStreak();
-
+  // Faithful old-site logic: right swipe → mastered (immediately), left → learning.
+  // The swiped card is identified by reference (matching old-site's in-place update),
+  // falling back to content match so an edited/replaced reference still updates the
+  // correct card. Never fall back to the shuffled session index.
   const handleCardSwiped = useCallback(
-    (projectId: string | number, cardIdx: number, direction: 1 | -1, card: Card) => {
+    (projectId: string | number, _cardIdx: number, direction: 1 | -1, card: Card) => {
       setProjects((prev) =>
         prev.map((p) => {
           if (p.id !== projectId) return p;
           const newCards = [...p.cards];
-          const origIdx = p.cards.findIndex((c) => c.front === card.front);
+          let origIdx = p.cards.indexOf(card);
+          if (origIdx === -1) origIdx = p.cards.findIndex((c) => c.front === card.front);
           if (origIdx === -1) return p;
           const existing = newCards[origIdx];
+          if (!existing) return p;
           const stats = existing.stats ?? { likes: 0, nopes: 0, status: "new" as const };
           const likes = stats.likes + (direction === 1 ? 1 : 0);
           const nopes = stats.nopes + (direction === -1 ? 1 : 0);
-          let status: "new" | "learning" | "mastered" = "new";
-          if (likes >= 3) status = "mastered";
-          else if (likes > 0 || nopes > 0) status = "learning";
+          const status: CardStatus = direction === 1 ? "mastered" : "learning";
           newCards[origIdx] = { ...existing, stats: { likes, nopes, status } };
           return { ...p, cards: newCards };
         }),
@@ -65,32 +66,24 @@ export default function StudyViewPage() {
     nopeStampRef,
     likeIconRef,
     nopeIconRef,
-  } = useStudySession(activeProject, tagMap, handleCardSwiped);
-
-  useEffect(() => {
-    if (searchParams.get("reverse") === "true") {
-      toggleReverseMode();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  } = useStudySession(activeProject, tagMap, handleCardSwiped, { reverse, sessionNonce, enabled: active });
 
   useEffect(() => {
     if (isCompleted) {
-      markStudyComplete();
+      onStudyComplete();
       forceSave();
     }
-  }, [isCompleted, markStudyComplete, forceSave]);
+  }, [isCompleted, onStudyComplete, forceSave]);
 
   if (!activeProject) {
     return (
-      <div className="view-container bg-blur-light" style={{ position: "relative" }}>
-        <div className="flex items-center justify-center h-full">
-          <div className="empty-state">
-            <i className="fa-regular fa-folder-open empty-icon" />
-            <h2 className="text-xl font-bold mb-2">プロジェクトが選択されていません</h2>
-            <Link href="/home" className="btn-secondary w-full" style={{ textDecoration: "none" }}>
-              ホームに戻る
-            </Link>
-          </div>
+      <div className="flex items-center justify-center h-full">
+        <div className="empty-state">
+          <i className="fa-regular fa-folder-open empty-icon" />
+          <h2 className="text-xl font-bold mb-2">プロジェクトが選択されていません</h2>
+          <button onClick={onBack} className="btn-secondary w-full">
+            ホームに戻る
+          </button>
         </div>
       </div>
     );
@@ -99,11 +92,11 @@ export default function StudyViewPage() {
   const currentCard = currentCards[currentIndex];
 
   return (
-    <div className="view-container bg-blur-light" style={{ position: "relative" }}>
+    <>
       <header className="view-header border-b" style={{ paddingBottom: "0.5rem", border: "none" }}>
-        <Link href="/home" className="btn-icon btn-glass" style={{ textDecoration: "none" }}>
+        <button onClick={onBack} className="btn-icon btn-glass">
           <i className="fa-solid fa-chevron-left" />
-        </Link>
+        </button>
 
         <div className="study-header-title">
           <span className="truncate w-full">{activeProject.title}</span>
@@ -117,9 +110,9 @@ export default function StudyViewPage() {
           <button onClick={shuffleCards} className="btn-icon btn-glass" title="シャッフル">
             <i className="fa-solid fa-shuffle" />
           </button>
-          <Link href="/study/cards" className="btn-icon btn-glass" title="カード一覧" style={{ textDecoration: "none" }}>
+          <button onClick={onOpenCardList} className="btn-icon btn-glass" title="カード一覧">
             <i className="fa-solid fa-list" />
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -149,9 +142,9 @@ export default function StudyViewPage() {
             <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.6)" }}>
               カード一覧から単語を追加してください
             </p>
-            <Link href="/study/cards" className="btn-secondary w-full" style={{ textDecoration: "none" }}>
+            <button onClick={onOpenCardList} className="btn-secondary w-full">
               カード一覧へ
-            </Link>
+            </button>
           </div>
         )}
 
@@ -294,9 +287,9 @@ export default function StudyViewPage() {
             <button onClick={resetStudy} className="btn-large">
               <i className="fa-solid fa-rotate-right" /> もう一度学習する
             </button>
-            <Link href="/home" className="btn-large-glass" style={{ textDecoration: "none" }}>
+            <button onClick={onBack} className="btn-large-glass">
               ホームに戻る
-            </Link>
+            </button>
           </div>
         )}
       </main>
@@ -321,6 +314,6 @@ export default function StudyViewPage() {
           </button>
         </footer>
       )}
-    </div>
+    </>
   );
 }
