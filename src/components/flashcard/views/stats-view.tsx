@@ -27,7 +27,7 @@ export function StatsView() {
 
   if (!activeProject) {
     return (
-      <div className="text-center mt-8" style={{ color: "rgba(255,255,255,0.5)" }}>
+      <div className="empty-text">
         プロジェクトが選択されていません
       </div>
     );
@@ -73,12 +73,12 @@ export function StatsView() {
       </div>
 
       <div className="stats-col-3">
-        <h3 className="font-bold mb-3 px-1 text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
+        <h3 className="stats-section-title">
           カード別データ
         </h3>
         <div className="stats-card-grid">
           {activeProject.cards.length === 0 && (
-            <div className="text-center py-4 text-sm" style={{ color: "rgba(255,255,255,0.5)", gridColumn: "1 / -1" }}>
+            <div className="stats-empty-text">
               カードがありません
             </div>
           )}

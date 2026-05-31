@@ -57,8 +57,6 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
     resetStudy,
     swipeOut,
     handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
     handleClick,
     cardRef,
     overlayBgRef,
@@ -93,7 +91,7 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
 
   return (
     <>
-      <header className="view-header border-b" style={{ paddingBottom: "0.5rem", border: "none" }}>
+      <header className="view-header study-header">
         <button onClick={onBack} className="btn-icon btn-glass">
           <i className="fa-solid fa-chevron-left" />
         </button>
@@ -121,8 +119,8 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
           <div className="progress-text">
             <div className="progress-badge">
               <span className="text-white">{currentIndex + 1}</span>
-              <span style={{ color: "rgba(255,255,255,0.5)", margin: "0 0.25rem" }}>/</span>
-              <span style={{ color: "rgba(255,255,255,0.8)" }}>{currentCards.length}</span>
+              <span className="progress-divider">/</span>
+              <span className="progress-total">{currentCards.length}</span>
             </div>
           </div>
           <div className="progress-bar-bg">
@@ -139,7 +137,7 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
           <div className="empty-state">
             <i className="fa-regular fa-folder-open empty-icon" />
             <h2 className="text-xl font-bold mb-2">No Cards Yet</h2>
-            <p className="text-sm mb-6" style={{ color: "rgba(255,255,255,0.6)" }}>
+            <p className="settings-desc mb-6">
               カード一覧から単語を追加してください
             </p>
             <button onClick={onOpenCardList} className="btn-secondary w-full">
@@ -153,8 +151,6 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
             ref={cardRef}
             className="card-container"
             onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
             onClick={handleClick}
             style={{ touchAction: "none" }}
           >
@@ -175,7 +171,7 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
                     <h2 className="card-word">{currentCard.front}</h2>
                   </div>
                 ) : (
-                  <div className="w-full flex-1 flex flex-col justify-center items-center mt-12 mb-8">
+                  <div className="card-reverse-content">
                     <div className="card-details-list">
                       {(currentCard.backDetails || []).map((detail, i) => (
                         <div key={`front_detail_${i}`} className="card-detail-item">
@@ -229,9 +225,7 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
 
                   {currentCard.example && (
                     <div className="card-example">
-                      <span className="text-yellow-200">&ldquo;</span>
-                      {currentCard.example}
-                      <span className="text-yellow-200">&rdquo;</span>
+                      <p>&quot;{currentCard.example}&quot;</p>
                     </div>
                   )}
                 </div>
@@ -240,7 +234,10 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
           </div>
         )}
 
-        {isCompleted && (
+      </main>
+
+      {isCompleted && (
+        <div className="complete-overlay">
           <div className="complete-card">
             <div className="complete-bg" />
             <h2 className="complete-title">Session Complete!</h2>
@@ -291,14 +288,14 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
               ホームに戻る
             </button>
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       {currentCards.length > 0 && !isCompleted && (
         <footer className="study-footer">
-          <button onClick={() => swipeOut(-1)} className="swipe-btn nope">
+          <button ref={nopeIconRef} onClick={() => swipeOut(-1)} className="swipe-btn nope">
             <div className="swipe-btn-circle">
-              <i ref={nopeIconRef} className="fa-solid fa-xmark" style={{ color: "rgba(255,255,255,0.6)", transition: "color 0.15s, transform 0.15s" }} />
+              <i className="fa-solid fa-xmark" style={{ color: "rgba(255,255,255,0.6)", transition: "color 0.15s, transform 0.15s" }} />
             </div>
             <span className="swipe-btn-text">まだ (←)</span>
           </button>
@@ -306,9 +303,9 @@ export function StudyView({ reverse, sessionNonce, active, onBack, onOpenCardLis
             <i className="fa-solid fa-arrows-left-right" />
             <span>SWIPE</span>
           </div>
-          <button onClick={() => swipeOut(1)} className="swipe-btn like">
+          <button ref={likeIconRef} onClick={() => swipeOut(1)} className="swipe-btn like">
             <div className="swipe-btn-circle">
-              <i ref={likeIconRef} className="fa-solid fa-check" style={{ color: "rgba(255,255,255,0.6)", transition: "color 0.15s, transform 0.15s" }} />
+              <i className="fa-solid fa-check" style={{ color: "rgba(255,255,255,0.6)", transition: "color 0.15s, transform 0.15s" }} />
             </div>
             <span className="swipe-btn-text">覚えた (→)</span>
           </button>

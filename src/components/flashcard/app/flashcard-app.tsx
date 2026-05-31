@@ -28,7 +28,7 @@ const isSubView = (v: View): v is SubView => SUB_VIEWS.includes(v as SubView);
  */
 export function FlashcardApp() {
   const { activeProject, setActiveProjectId, forceSave } = useFlashcard();
-  const { weekDays, displayStreak, streakMessage, streakData, animateStreak, markStudyComplete } = useStreak();
+  const { weekDays, displayStreak, streakMessage, animateStreak, markStudyComplete } = useStreak();
 
   const [currentView, setCurrentView] = useState<View>("streak");
   const [reverseMode, setReverseMode] = useState(false);
@@ -124,14 +124,12 @@ export function FlashcardApp() {
       <ViewTransition
         show={currentView === "streak"}
         direction="fade"
-        className="view-container flex flex-col items-center justify-between p-6 z-50"
-        style={{ backgroundColor: "#13151a" }}
+        className="view-container streak-view"
       >
         <StreakView
           weekDays={weekDays}
           displayStreak={displayStreak}
           streakMessage={streakMessage}
-          studyHistoryCount={streakData.studyHistory.length}
           onContinue={() => setCurrentView("home")}
         />
       </ViewTransition>
@@ -162,11 +160,11 @@ export function FlashcardApp() {
           <button onClick={goBackFromSubView} className="btn-icon btn-glass shrink-0">
             <i className="fa-solid fa-chevron-left" />
           </button>
-          <div className="view-title flex-1 min-w-0 justify-center px-4 flex items-center gap-2">
+          <div className="subview-title-wrap">
             {subViewIcon && <i className={`fa-solid ${subViewIcon}`} style={subViewIconStyle} />}
             <h1 className="truncate text-center w-full text-lg font-bold">{subViewTitle}</h1>
           </div>
-          <div className="shrink-0" style={{ width: "2.5rem" }} />
+          <div className="header-spacer" />
         </header>
 
         <main className={`view-main${subView === "ai" ? " flex flex-col items-center" : ""}`}>

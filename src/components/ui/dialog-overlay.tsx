@@ -20,26 +20,19 @@ export function DialogOverlay({ dialog, onConfirm, onCancel }: DialogOverlayProp
 
   return (
     <div
-      className="modal-overlay"
-      style={{ zIndex: 100 }}
+      className="modal-overlay modal-overlay-top"
       onClick={(e) => {
         if (e.target === e.currentTarget && dialog.type === "alert") onCancel();
       }}
     >
-      <div className="modal-content" style={{ maxWidth: "24rem" }}>
+      <div className="modal-content modal-content-sm">
         <h2
           className={`modal-title ${dialog.type === "confirm" ? "text-red-400" : ""}`}
         >
           {dialog.title}
         </h2>
-        <div className="modal-body" style={{ marginBottom: "1.5rem" }}>
-          <p
-            style={{
-              color: "rgba(255,255,255,0.8)",
-              whiteSpace: "pre-wrap",
-              fontSize: "0.875rem",
-            }}
-          >
+        <div className="modal-body modal-body-spaced">
+          <p className="dialog-message">
             {dialog.message}
           </p>
         </div>

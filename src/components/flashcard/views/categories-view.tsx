@@ -67,7 +67,7 @@ export function CategoriesView() {
   return (
     <>
       <div className="w-full">
-        <div className="input-group" style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+        <div className="input-group">
           <input
             type="text"
             value={newCategoryName}
@@ -87,7 +87,6 @@ export function CategoriesView() {
                 <div
                   className="category-header"
                   onClick={() => toggleCategoryExpanded(cat.id)}
-                  style={{ cursor: "pointer" }}
                 >
                   <div className="category-title-wrap">
                     <i
@@ -117,7 +116,7 @@ export function CategoriesView() {
 
                 {cat.expanded && (
                   <div className="category-body">
-                    <div className="tag-input-group" style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                    <div className="tag-input-group">
                       <input
                         type="text"
                         value={cat.newTagName || ""}
@@ -128,8 +127,7 @@ export function CategoriesView() {
                       />
                       <button
                         onClick={() => handleAddTag(cat)}
-                        className="btn-secondary shrink-0"
-                        style={{ padding: "0.5rem 1rem", fontSize: "0.875rem" }}
+                        className="btn-secondary btn-secondary-sm shrink-0"
                       >
                         追加
                       </button>
@@ -151,7 +149,7 @@ export function CategoriesView() {
                         </div>
                       ))}
                       {catTags.length === 0 && (
-                        <span className="text-xs" style={{ color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>
+                        <span className="empty-tag-text">
                           タグがありません
                         </span>
                       )}

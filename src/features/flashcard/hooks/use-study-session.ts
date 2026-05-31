@@ -67,8 +67,8 @@ export function useStudySession(
   const overlayBgRef = useRef<HTMLDivElement | null>(null);
   const likeStampRef = useRef<HTMLDivElement | null>(null);
   const nopeStampRef = useRef<HTMLDivElement | null>(null);
-  const likeIconRef = useRef<HTMLElement | null>(null);
-  const nopeIconRef = useRef<HTMLElement | null>(null);
+  const likeIconRef = useRef<HTMLButtonElement | null>(null);
+  const nopeIconRef = useRef<HTMLButtonElement | null>(null);
 
   const dragLoopId = useRef<number | null>(null);
   const statsRef = useRef<SessionStats>({ like: 0, nope: 0 });
@@ -287,6 +287,73 @@ export function useStudySession(
     [isAnimating, isCompleted, currentCards, currentIndex, project, onCardSwiped, getOverlayRefs],
   );
 
+  // --- ドラッグイベント ---
+  // 旧実装と同様に、move/up イベントは window に登録する。
+  // カード要素にのみバインドすると、指/マウスがカード外に出た瞬間に
+  // イベントが途切れてスワイプが効かなくなるため。
+  const swipeOutRef = useRef(swipeOut);
+  swipeOutRef.current = swipeOut;
+  const getOverlayRefsRef = useRef(getOverlayRefs);
+  getOverlayRefsRef.current = getOverlayRefs;
+
+  const onWindowPointerMove = useCallback((e: PointerEvent) => {
+    if (!isDragging.current) return;
+    const deltaX = e.clientX - startX.current;
+    const deltaY = e.clientY - startY.current;
+
+    if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) hasDragged.current = true;
+
+    if (isSwipeMode.current === null) {
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
+        isSwipeMode.current = false;
+      } else if (Math.abs(deltaX) > 2) {
+        isSwipeMode.current = true;
+      }
+    }
+
+    if (isSwipeMode.current !== false) {
+      targetSwipeX.current = deltaX;
+    }
+  }, []);
+
+  const onWindowPointerUp = useCallback(() => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+
+    if (dragLoopId.current) {
+      cancelAnimationFrame(dragLoopId.current);
+      dragLoopId.current = null;
+    }
+
+    if (isSwipeMode.current !== false) {
+      const threshold = window.innerWidth * 0.25;
+      if (currentSwipeX.current > threshold) {
+        swipeOutRef.current(1);
+        return;
+      } else if (currentSwipeX.current < -threshold) {
+        swipeOutRef.current(-1);
+        return;
+      } else {
+        animateSnapBack(cardRef.current, getOverlayRefsRef.current());
+        targetSwipeX.current = 0;
+        currentSwipeX.current = 0;
+      }
+    }
+
+    if (cardRef.current) gsap.set(cardRef.current, { willChange: "auto" });
+    isSwipeMode.current = null;
+  }, []);
+
+  // window イベントの登録/解除
+  useEffect(() => {
+    window.addEventListener("pointermove", onWindowPointerMove);
+    window.addEventListener("pointerup", onWindowPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onWindowPointerMove);
+      window.removeEventListener("pointerup", onWindowPointerUp);
+    };
+  }, [onWindowPointerMove, onWindowPointerUp]);
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (isAnimating || isCompleted || currentCards.length === 0) return;
@@ -312,57 +379,6 @@ export function useStudySession(
     [isAnimating, isCompleted, currentCards.length, updateDrag],
   );
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging.current) return;
-      const deltaX = e.clientX - startX.current;
-      const deltaY = e.clientY - startY.current;
-
-      if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) hasDragged.current = true;
-
-      if (isSwipeMode.current === null) {
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 5) {
-          isSwipeMode.current = false;
-        } else if (Math.abs(deltaX) > 2) {
-          isSwipeMode.current = true;
-        }
-      }
-
-      if (isSwipeMode.current !== false) {
-        targetSwipeX.current = deltaX;
-      }
-    },
-    [],
-  );
-
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging.current) return;
-    isDragging.current = false;
-
-    if (dragLoopId.current) {
-      cancelAnimationFrame(dragLoopId.current);
-      dragLoopId.current = null;
-    }
-
-    if (isSwipeMode.current !== false) {
-      const threshold = window.innerWidth * 0.25;
-      if (currentSwipeX.current > threshold) {
-        swipeOut(1);
-        return;
-      } else if (currentSwipeX.current < -threshold) {
-        swipeOut(-1);
-        return;
-      } else {
-        animateSnapBack(cardRef.current, getOverlayRefs());
-        targetSwipeX.current = 0;
-        currentSwipeX.current = 0;
-      }
-    }
-
-    if (cardRef.current) gsap.set(cardRef.current, { willChange: "auto" });
-    isSwipeMode.current = null;
-  }, [swipeOut, getOverlayRefs]);
-
   const handleClick = useCallback(
     (_e: React.MouseEvent) => {
       if (hasDragged.current) return;
@@ -374,7 +390,7 @@ export function useStudySession(
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (!enabled || isCompleted || isAnimating) return;
+      if (!enabled || currentCards.length === 0 || isAnimating || isCompleted) return;
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
@@ -394,7 +410,7 @@ export function useStudySession(
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [enabled, isCompleted, isAnimating, swipeOut, flipCard]);
+  }, [enabled, isCompleted, isAnimating, swipeOut, flipCard, currentCards.length]);
 
   // Cleanup drag loop on unmount
   useEffect(() => {
@@ -420,8 +436,6 @@ export function useStudySession(
     swipeOut,
 
     handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
     handleClick,
 
     cardRef,
