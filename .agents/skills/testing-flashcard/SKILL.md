@@ -45,16 +45,20 @@ Keep both open side-by-side for direct comparison. Use browser DevTools → Perf
 
 ## Navigation Map
 
-| Page | Next.js URL | old-site screen | How to reach |
-|------|-------------|-----------------|--------------|
-| Streak | `/` | Streak screen | App load |
-| Home | `/home` | Home screen | Click "続ける" on streak page |
-| Study | `/study` | Study screen | Click a project card body |
-| Card List | `/study/cards` | Card list overlay | Click list icon in study header |
-| Categories | `/categories` | Categories screen | Click tag icon in /home header |
-| Settings | `/settings` | Settings screen | Click gear icon in /home header |
-| AI | `/ai` | AI screen | Click wand icon in /home header |
-| Stats | `/stats` | Stats screen | Click stats icon on a project card |
+> ⚠️ **重要 — URLルーティングは無し。** old-site も新Next.jsアプリも、画面遷移は `currentView` 状態で切り替わる**単一ページSPA**。新アプリでも URL は常に `/`（静的エクスポート時は `/flashcard/`）のままで、ビューを切り替えても URL は変化しない。ブラウザの戻る/進むボタンでビューは戻らない（履歴を操作しない）。ビューへの到達はすべて**画面内のボタン/アイコン操作**で行う。
+
+| View (`currentView`) | URL（両サイト共通） | How to reach |
+|------|------|--------------|
+| `streak` | `/` | アプリ起動直後（ローダー後） |
+| `home` | `/`（変化なし） | streak 画面の「続ける」ボタン |
+| `study` | `/`（変化なし） | home でプロジェクトカード本体をクリック |
+| `cardList` | `/`（変化なし） | study ヘッダーのリストアイコン |
+| `categories` | `/`（変化なし） | home ヘッダーのタグアイコン |
+| `settings` | `/`（変化なし） | home ヘッダーの歯車アイコン |
+| `ai` | `/`（変化なし） | home ヘッダーのワンドアイコン |
+| `stats` | `/`（変化なし） | プロジェクトカードの統計アイコン |
+
+ビュー切替アニメーションは CSS 変数 `--tx` / `--ty`（`cardList`/`stats` は横方向 2.5rem、その他は縦方向 2.5rem）で方向が決まる。新アプリでは `FlashcardStore` の `currentView` setter がこの変数を設定する（old-site の `init.js` の `$watch('currentView')` 相当）。
 
 ---
 
@@ -113,14 +117,14 @@ For each screen, verify layout in both sites with identical viewport size (e.g. 
 - [ ] "続ける" button: size, colour, corner radius, shadow
 - [ ] Background colour / gradient
 
-### `/home` Home Page
+### Home view
 - [ ] Header icon row: spacing, icon size, tap target
 - [ ] Project card: width, padding, border radius, shadow
 - [ ] Card metadata: font size, colour, layout
 - [ ] Stats icon: position, visibility
 - [ ] Empty state UI
 
-### `/study` Study Page
+### Study view
 - [ ] Card face: question text size, padding, font weight
 - [ ] Card back: answer layout, tag chips
 - [ ] LIKE button: colour (`#4CAF50`-ish green?), icon, size
@@ -128,12 +132,12 @@ For each screen, verify layout in both sites with identical viewport size (e.g. 
 - [ ] Progress bar or counter (if any)
 - [ ] Header: back arrow, list icon — position and size
 
-### `/study/cards` Card List
+### Card List view (`cardList`)
 - [ ] Row height, dividers, padding
 - [ ] Edit / delete affordances (swipe to delete? icon buttons?)
 - [ ] Scroll momentum
 
-### `/categories`, `/settings`, `/ai`, `/stats`
+### Categories / Settings / AI / Stats views
 - [ ] Header style matches other pages
 - [ ] Form input appearance (border, focus ring, padding)
 - [ ] Button and action styles
@@ -152,7 +156,8 @@ For each screen, verify layout in both sites with identical viewport size (e.g. 
 6. After all cards, Session Complete screen:
    - LIKE count = 3, NOPE count = 2, accuracy = 60%
    - Confetti should fire
-7. Repeat with keyboard: `→` = LIKE, `←` = NOPE
+7. Repeat with keyboard: `→` = LIKE, `←` = NOPE, `Space`/`↑`/`↓` = カードめくり（flip）
+   - ガード条件（old-site 準拠）: `currentView === 'study'` かつ カードあり かつ `!isAnimating` かつ `!isCompleted` のときのみ反応。それ以外のビューではキー操作は無効。
 
 **Slow-motion debug tip:** paste this in old-site console to see GSAP animations at 10% speed:
 ```js
@@ -223,17 +228,21 @@ pnpm run lint    # 0 ESLint warnings/errors
 | Layout (mobile) | Pixel-close at 390px wide | Visible spacing/sizing discrepancy |
 | Session stats | LIKE/NOPE counts match actions | Any count shows 0 or wrong value |
 | Data persistence | All data survives hard reload | Any data lost |
-| Navigation | All routes reachable, no blank screens | 404, white screen, or hydration error |
+| Navigation | 全ビューが画面内操作で到達可・URLは `/` のまま | ビューが切り替わらない、白画面、hydration error |
 
 ---
 
-## Known Pitfalls
+## Known Pitfalls（今回のアーキテクチャ前提）
 
-- **Session stats reset**: `useEffect` on full `project` object resets stats on every swipe. Fix: depend on `project.id` only, use `prevProjectId` ref.
-- **Stale closure in setTimeout**: stats captured inside `setTimeout` may be stale. Fix: `useRef` to track stats synchronously.
-- **GSAP ease names**: Next.js must import GSAP with the same registered plugins (e.g. `gsap.registerPlugin(...)`) that old-site uses — check old-site's GSAP import for plugins.
-- **Alpine.js `x-collapse`**: old-site uses `@alpinejs/collapse` for height animations on delete. Replicate with GSAP `height` tween or CSS `max-height` transition in Next.js.
-- **IME input**: Japanese text via automated `type` action may not trigger Alpine.js or React input events correctly. Test Japanese input manually.
+新アプリは Alpine.js の「フィールド直接代入→リアクティブ再描画」を、可変インスタンス `FlashcardStore` + `commit()`（React 再描画トリガ）で再現している。React hooks ベースではない点に注意。
+
+- **再描画されない**: ストアのフィールドを変更したのに画面が更新されない場合、`store.commit()`（または `store.update(fn)` / `store.render()`）が呼ばれているか確認する。直接代入のみでは再描画されない。
+- **ビュー切替アニメ**: `Transition` / `DefaultTransition` / `Collapse` コンポーネントが Alpine の `x-transition` / 既定トランジション / `x-collapse`（250ms, `cubic-bezier(0.4,0,0.2,1)`）を再現する。タイミングがズレて見えたら old-site の該当ディレクティブ/CSS と値を突き合わせる。
+- **`--tx`/`--ty`**: ビュー遷移方向はこの CSS 変数で決まる。`cardList`/`stats` だけ横方向になるのは仕様（要確認ポイント）。
+- **ハイドレーション**: ルート（`App.tsx`）はマウント後にのみ本体を描画する（`new Date()` 由来の streak メッセージ等の SSR 不整合回避）。初回は `#global-loader` のみ表示 → `store.init()`（effect）完了後に表示される。白画面のままなら `store.isLoaded` と init のエラーを確認。
+- **GSAP**: `gsap.ticker.fps(120)` を含め、`duration`/`ease`/`stagger`/`delay` は `src/lib/animations/*` が old-site の `old-site/src/js/animations/*` を忠実移植している。差異があれば両者の値を直接比較する。
+- **キーボード**: ハンドラは `App.tsx` の window `keydown` リスナー。study ビュー限定のガード条件を満たすか確認（上記参照）。
+- **IME input**: 日本語入力を自動 `type` で行うと Alpine.js / React の input イベントが正しく発火しないことがある。日本語入力は手動で確認する。
 - **Port conflicts**: Vite defaults to 5173, Next.js to 3000. If either port is taken they auto-increment — check terminal output.
 
 ---
