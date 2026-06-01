@@ -103,24 +103,57 @@ GSAP is used in old-site for all major animations. For each item below, read the
 
 ---
 
-## Page-by-Page Visual Checklist
+## Cross-Device Visual Validation
 
-For each screen, verify layout in both sites with identical viewport size (e.g. 390×844 mobile).
+For every screen, compare the source and target using identical viewport sizes.
+Do not validate using a single viewport only.
+Required viewport categories:
 
-### `/` Streak Page
+### Mobile
+- 360×800 (small Android)
+- 390×844 (standard phone)
+- 412×915 (large Android)
+- 430×932 (large iPhone)
+
+### Tablet
+- 768×1024 (tablet portrait)
+- 1024×768 (tablet landscape)
+
+### Desktop
+- 1280×720 (small laptop)
+- 1440×900 (standard desktop)
+- 1920×1080 (large desktop)
+
+For each viewport:
+
+1. Verify layout structure.
+2. Verify spacing and alignment.
+3. Verify typography.
+4. Verify component sizing.
+5. Verify responsive behavior.
+6. Verify overflow and scrolling behavior.
+7. Verify navigation and interactions.
+8. Verify visual parity with the source implementation.
+
+A migration is not complete until UI and UX parity is confirmed across all required viewport categories.
+Visual validation must be performed across all required viewport categories.
+A migration is considered incomplete if parity is verified only on a single device size.
+The target implementation must match the source implementation across mobile, tablet, and desktop viewports.
+
+#### `/` Streak Page
 - [ ] Streak count display and formatting
 - [ ] Flame/icon size and position
 - [ ] "続ける" button: size, colour, corner radius, shadow
 - [ ] Background colour / gradient
 
-### `/home` Home Page
+#### `/home` Home Page
 - [ ] Header icon row: spacing, icon size, tap target
 - [ ] Project card: width, padding, border radius, shadow
 - [ ] Card metadata: font size, colour, layout
 - [ ] Stats icon: position, visibility
 - [ ] Empty state UI
 
-### `/study` Study Page
+#### `/study` Study Page
 - [ ] Card face: question text size, padding, font weight
 - [ ] Card back: answer layout, tag chips
 - [ ] LIKE button: colour (`#4CAF50`-ish green?), icon, size
@@ -128,12 +161,12 @@ For each screen, verify layout in both sites with identical viewport size (e.g. 
 - [ ] Progress bar or counter (if any)
 - [ ] Header: back arrow, list icon — position and size
 
-### `/study/cards` Card List
+#### `/study/cards` Card List
 - [ ] Row height, dividers, padding
 - [ ] Edit / delete affordances (swipe to delete? icon buttons?)
 - [ ] Scroll momentum
 
-### `/categories`, `/settings`, `/ai`, `/stats`
+#### `/categories`, `/settings`, `/ai`, `/stats`
 - [ ] Header style matches other pages
 - [ ] Form input appearance (border, focus ring, padding)
 - [ ] Button and action styles
@@ -235,6 +268,10 @@ pnpm run lint    # 0 ESLint warnings/errors
 - **Alpine.js `x-collapse`**: old-site uses `@alpinejs/collapse` for height animations on delete. Replicate with GSAP `height` tween or CSS `max-height` transition in Next.js.
 - **IME input**: Japanese text via automated `type` action may not trigger Alpine.js or React input events correctly. Test Japanese input manually.
 - **Port conflicts**: Vite defaults to 5173, Next.js to 3000. If either port is taken they auto-increment — check terminal output.
+- **React Strict Mode & Double Invocation**: In development, `useEffect` runs twice. `gsap.from()` animations might capture wrong inline styles on the second run. 
+  - *Fix*: Use `@gsap/react` hook (`useGSAP`) or ensure proper cleanup via `gsap.context()`.
+- **Hydration Mismatch on Storage**: Reading `localStorage` or `Dexie` directly during initial React render causes SSR mismatch. Ensure storage access happens inside `useEffect` or is client-only (`ssr: false`).
+- **Font Rendering & Text Wrapping**: Next.js uses `next/font`. Minor layout/line-wrap discrepancies can happen if font metrics differ slightly from Vite. Check line breaks on mobile.
 
 ---
 
