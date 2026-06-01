@@ -4,10 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "lint": "eslint . --cache",
+    "lint:fix": "eslint . --cache --fix",
+    "typecheck": "tsc --noEmit",
+    
+    "check": "pnpm lint && pnpm typecheck",
     "build": "next build",
+    "verify": "pnpm check && pnpm build",
+    
     "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "serve": "pnpm verify && pnpm start"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.0",
@@ -31,7 +37,6 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
-    "eslint-plugin-tailwindcss": "^3.18.3",
     "postcss": "^8.5.15",
     "typescript": "^6.0.3"
   },

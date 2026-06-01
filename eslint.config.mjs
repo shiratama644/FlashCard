@@ -1,22 +1,55 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
 
-const eslintConfig = [
+export default [
+  {
+    ignores: [
+      ".next/**",
+      "out/**",
+      "node_modules/**",
+      "old-site/**",
+    ],
+  },
+
   ...nextCoreWebVitals,
   ...nextTypescript,
+
   {
-    ignores: ["old-site/**", "out/**", ".next/**", "node_modules/**"],
-  },
-  {
-    // old-site（Alpine.js）の「可変ストアを直接書き換えて再描画」モデルを忠実移植している。
-    // React Compiler 向けの以下の新ルールは本アーキテクチャと根本的に競合するため無効化する。
-    // （ストアは useRef で 1 度だけ生成する不変参照であり、refs への代入は DOM 参照の保持に過ぎない）
     rules: {
+      // Alpine.js互換アーキテクチャのため無効化
       "react-hooks/immutability": "off",
       "react-hooks/refs": "off",
       "react-hooks/set-state-in-effect": "off",
+      
+      // import type を強制
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        {
+          prefer: "type-imports",
+          fixStyle: "inline-type-imports",
+        },
+      ],
+      
+      // 未使用変数
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+      
+      // anyを極力防ぐ
+      "@typescript-eslint/no-explicit-any": "warn",
+      
+      // console.logを警告
+      "no-console": [
+        "warn",
+        {
+          allow: ["warn", "error"],
+        },
+      ],
     },
   },
 ];
-
-export default eslintConfig;
