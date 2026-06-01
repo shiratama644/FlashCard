@@ -50,7 +50,7 @@ Keep both open side-by-side for direct comparison. Use browser DevTools → Perf
 | View (`currentView`) | URL（両サイト共通） | How to reach |
 |------|------|--------------|
 | `streak` | `/` | アプリ起動直後（ローダー後） |
-| `home` | `/`（変化なし） | streak 画面の「続ける」ボタン |
+| `home` | `/`（変化なし） | streak 画面の「次へ」ボタン |
 | `study` | `/`（変化なし） | home でプロジェクトカード本体をクリック |
 | `cardList` | `/`（変化なし） | study ヘッダーのリストアイコン |
 | `categories` | `/`（変化なし） | home ヘッダーのタグアイコン |
@@ -93,7 +93,7 @@ GSAP is used in old-site for all major animations. For each item below, read the
 ### Streak Screen
 - [ ] Flame / counter entrance animation (scale, fade, bounce?)
 - [ ] Count-up number animation if present
-- [ ] "続ける" button press feedback
+- [ ] "次へ" button press feedback
 
 ### Home Screen — Card List Entrance
 - [ ] Cards stagger in on first render — stagger value matches
@@ -107,24 +107,57 @@ GSAP is used in old-site for all major animations. For each item below, read the
 
 ---
 
-## Page-by-Page Visual Checklist
+## Cross-Device Visual Validation
 
-For each screen, verify layout in both sites with identical viewport size (e.g. 390×844 mobile).
+For every screen, compare the source and target using identical viewport sizes.
+Do not validate using a single viewport only.
+Required viewport categories:
 
-### `/` Streak Page
+### Mobile
+- 360×800 (small Android)
+- 390×844 (standard phone)
+- 412×915 (large Android)
+- 430×932 (large iPhone)
+
+### Tablet
+- 768×1024 (tablet portrait)
+- 1024×768 (tablet landscape)
+
+### Desktop
+- 1280×720 (small laptop)
+- 1440×900 (standard desktop)
+- 1920×1080 (large desktop)
+
+For each viewport:
+
+1. Verify layout structure.
+2. Verify spacing and alignment.
+3. Verify typography.
+4. Verify component sizing.
+5. Verify responsive behavior.
+6. Verify overflow and scrolling behavior.
+7. Verify navigation and interactions.
+8. Verify visual parity with the source implementation.
+
+A migration is not complete until UI and UX parity is confirmed across all required viewport categories.
+Visual validation must be performed across all required viewport categories.
+A migration is considered incomplete if parity is verified only on a single device size.
+The target implementation must match the source implementation across mobile, tablet, and desktop viewports.
+
+#### `/` Streak Page
 - [ ] Streak count display and formatting
 - [ ] Flame/icon size and position
-- [ ] "続ける" button: size, colour, corner radius, shadow
+- [ ] "次へ" button: size, colour, corner radius, shadow
 - [ ] Background colour / gradient
 
-### Home view
+#### Home view
 - [ ] Header icon row: spacing, icon size, tap target
 - [ ] Project card: width, padding, border radius, shadow
 - [ ] Card metadata: font size, colour, layout
 - [ ] Stats icon: position, visibility
 - [ ] Empty state UI
 
-### Study view
+#### Study view
 - [ ] Card face: question text size, padding, font weight
 - [ ] Card back: answer layout, tag chips
 - [ ] LIKE button: colour (`#4CAF50`-ish green?), icon, size
@@ -132,12 +165,12 @@ For each screen, verify layout in both sites with identical viewport size (e.g. 
 - [ ] Progress bar or counter (if any)
 - [ ] Header: back arrow, list icon — position and size
 
-### Card List view (`cardList`)
+#### Card List view (`cardList`)
 - [ ] Row height, dividers, padding
 - [ ] Edit / delete affordances (swipe to delete? icon buttons?)
 - [ ] Scroll momentum
 
-### Categories / Settings / AI / Stats views
+#### Categories / Settings / AI / Stats views
 - [ ] Header style matches other pages
 - [ ] Form input appearance (border, focus ring, padding)
 - [ ] Button and action styles
@@ -149,7 +182,7 @@ For each screen, verify layout in both sites with identical viewport size (e.g. 
 
 1. Open both sites at root (`/` and `http://localhost:5173`)
 2. Note streak count — should use same localStorage key (`flashcard_streak_data`)
-3. Click "続ける" → verify page transition animation matches
+3. Click "次へ" → verify page transition animation matches
 4. Click a project card → study screen
 5. Perform **LIKE 3 times, NOPE 2 times** (or any fixed sequence)
    - Watch swipe animations frame-by-frame if needed (DevTools slow motion: `gsap.globalTimeline.timeScale(0.1)` in console on old-site)
@@ -244,6 +277,10 @@ pnpm run lint    # 0 ESLint warnings/errors
 - **キーボード**: ハンドラは `App.tsx` の window `keydown` リスナー。study ビュー限定のガード条件を満たすか確認（上記参照）。
 - **IME input**: 日本語入力を自動 `type` で行うと Alpine.js / React の input イベントが正しく発火しないことがある。日本語入力は手動で確認する。
 - **Port conflicts**: Vite defaults to 5173, Next.js to 3000. If either port is taken they auto-increment — check terminal output.
+- **React Strict Mode & Double Invocation**: In development, `useEffect` runs twice. `gsap.from()` animations might capture wrong inline styles on the second run. 
+  - *Fix*: Use `@gsap/react` hook (`useGSAP`) or ensure proper cleanup via `gsap.context()`.
+- **Hydration Mismatch on Storage**: Reading `localStorage` or `Dexie` directly during initial React render causes SSR mismatch. Ensure storage access happens inside `useEffect` or is client-only (`ssr: false`).
+- **Font Rendering & Text Wrapping**: Next.js uses `next/font`. Minor layout/line-wrap discrepancies can happen if font metrics differ slightly from Vite. Check line breaks on mobile.
 
 ---
 
