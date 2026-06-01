@@ -2,7 +2,7 @@
 
 // 共有サブビュー（cardList / stats / categories / settings / ai）
 // index.html 344-573 の忠実移植
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 import { Collapse } from "../Collapse";
 

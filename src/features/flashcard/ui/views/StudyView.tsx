@@ -2,7 +2,7 @@
 
 // 2. STUDY VIEW（index.html 188-339 の忠実移植）
 import { useEffect } from "react";
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 
 function CardContainer() {

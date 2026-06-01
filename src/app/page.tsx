@@ -1,5 +1,5 @@
-import { StoreProvider } from "@/store/StoreProvider";
-import { App } from "@/components/App";
+import { StoreProvider } from "@/features/flashcard/state/StoreProvider";
+import { App } from "@/features/flashcard/ui/App";
 
 export default function Page() {
   return (

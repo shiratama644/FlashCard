@@ -1,7 +1,7 @@
 "use client";
 
 // カスタムダイアログ（Alert/Confirm）index.html 581-595
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 
 export function DialogModal() {

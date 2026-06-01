@@ -4,7 +4,7 @@
 // SSR と localStorage/Date 由来のハイドレーション不整合を避けるため、
 // 実体はマウント後にのみ描画する（ローダーは常時描画）。
 import { useEffect, useState } from "react";
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { GlobalLoader } from "./GlobalLoader";
 import { ToastContainer } from "./Toast";
 import { StreakView } from "./views/StreakView";

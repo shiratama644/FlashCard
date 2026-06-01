@@ -1,7 +1,7 @@
 "use client";
 
 // カテゴリ編集モーダル（index.html 749-773）
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 
 export function EditCategoryModal() {

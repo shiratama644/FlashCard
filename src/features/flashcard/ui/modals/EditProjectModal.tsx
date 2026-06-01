@@ -1,7 +1,7 @@
 "use client";
 
 // プロジェクト編集モーダル（index.html 801-834）
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 import { CustomSelect } from "../CustomSelect";
 

@@ -2,8 +2,8 @@
 
 // トーストコンテナ（index.html の .toast-container 相当）
 import { useEffect } from "react";
-import { useStore } from "@/store/StoreProvider";
-import type { Toast as ToastType } from "@/lib/types";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
+import type { Toast as ToastType } from "@/features/flashcard/data/types";
 import { Transition } from "./Transition";
 
 function ToastItem({ toast }: { toast: ToastType }) {
