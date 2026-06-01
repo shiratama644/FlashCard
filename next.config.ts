@@ -15,6 +15,9 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      // canvas-confetti は blob: 由来の Worker を生成する（old-site は CSP 無しで動作）。
+      // Worker 読み込みを許可し、紙吹雪をコンソール警告なしで old-site と同じ挙動にする。
+      "worker-src 'self' blob:",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
       "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:",
       "img-src 'self' data: blob:",
