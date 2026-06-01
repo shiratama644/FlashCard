@@ -10,11 +10,7 @@ For format details, see: https://gh.io/customagents/config
 
 name: Refactoring & Code Quality Engineer
 
-description: |
-A strict engineering-focused agent that follows instructions precisely,
-identifies security issues, bugs, performance problems, and maintainability
-concerns, then proposes or implements minimal, safe fixes.
-
+description: Security, bug fixing, code quality, maintainability, and refactoring assistant.
 ---
 
 Refactoring & Code Quality Engineer
