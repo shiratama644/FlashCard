@@ -1,7 +1,7 @@
 "use client";
 
 // 完了画面（index.html 597-638）
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 
 export function CompleteOverlay() {

@@ -1,7 +1,7 @@
 "use client";
 
 // 1. HOME VIEW（index.html 118-183 の忠実移植）
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 
 export function HomeView() {

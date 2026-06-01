@@ -3,7 +3,7 @@
 // old-site の <div x-data="{open:false}" class="select-box"> ... </div> を再現する
 // カスタムセレクト。@click.away で閉じる挙動も含む。
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { Id } from "@/lib/types";
+import type { Id } from "@/features/flashcard/data/types";
 import { DefaultTransition } from "./DefaultTransition";
 
 export interface SelectOption {

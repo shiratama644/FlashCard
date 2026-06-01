@@ -170,3 +170,25 @@ Next.js 16.2.6 / React 19.2 / TypeScript 6 / Tailwind CSS v4 / Dexie 4 / GSAP 3 
 - `main` へ直接 push しない。専用ブランチ `migrate/<ts>-oldsite-nextjs` で作業。
 - 移行本体と CI/CD 変更は**別 PR**。
 - ソースにバグ/不整合を見つけても**勝手に直さず**ご相談します。
+
+---
+
+## 10. リファクタリングの目的・制約（現行 Next.js）
+
+- **見た目・挙動・アニメーションは不変**（UI/UX の仕様変更は行わない）。
+- `old-site/` は **保持**（削除・改変しない）。
+- 既存の CSS クラス名は **維持**（再利用前提）。
+- 目的は **責務分割と可読性の向上**であり、機能追加は行わない。
+- 現行構成（棚卸し）:
+  - `src/features/flashcard/state`（状態・UI 操作・セッション制御）
+  - `src/features/flashcard/data`（Dexie/Schema/Types/Constants）
+  - `src/features/flashcard/animations`（GSAP/drag/confetti）
+  - `src/features/flashcard/ui`（views/modals/共通 UI）
+
+---
+
+## 11. 回帰確認の基準（リファクタ）
+
+- `pnpm lint` / `pnpm typecheck` / `pnpm build` がすべて成功すること。
+- 旧 UI と **ビュー遷移・アニメ・操作感の一致**（`testing-flashcard` スキルを使用）。
+- Dexie / localStorage の **読み書き・移行・保存キュー**が従来通りに機能すること。

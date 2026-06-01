@@ -2,7 +2,7 @@
 
 // #global-loader の表示制御（init.js の hideLoader 相当）
 import { useEffect, useRef } from "react";
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 
 export function GlobalLoader() {
   const store = useStore();

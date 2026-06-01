@@ -1,7 +1,7 @@
 "use client";
 
 // プロジェクト追加モーダル（index.html 640-670）
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 import { CustomSelect } from "../CustomSelect";
 

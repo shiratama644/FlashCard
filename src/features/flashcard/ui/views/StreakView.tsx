@@ -1,7 +1,7 @@
 "use client";
 
 // 0. STREAK VIEW（index.html 48-113 の忠実移植）
-import { useStore } from "@/store/StoreProvider";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
 
 export function StreakView() {

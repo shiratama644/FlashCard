@@ -1,8 +1,8 @@
 "use client";
 
 // カード追加・編集モーダル（index.html 672-747）
-import { useStore } from "@/store/StoreProvider";
-import type { Id } from "@/lib/types";
+import { useStore } from "@/features/flashcard/state/StoreProvider";
+import type { Id } from "@/features/flashcard/data/types";
 import { Transition } from "../Transition";
 import { Collapse } from "../Collapse";
 import { CustomSelect } from "../CustomSelect";
