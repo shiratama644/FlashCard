@@ -3,6 +3,7 @@
 // 0. STREAK VIEW（index.html 48-113 の忠実移植）
 import { useStore } from "@/features/flashcard/state/StoreProvider";
 import { Transition } from "../Transition";
+import { buildStreakMessage } from "./streakMessage";
 
 export function StreakView() {
   const store = useStore();
@@ -72,7 +73,7 @@ export function StreakView() {
         </div>
 
         {/* 動的メッセージ */}
-        <div className="streak-message" dangerouslySetInnerHTML={{ __html: store.streakMessage }}></div>
+        <div className="streak-message">{buildStreakMessage(store.streakData.currentStreak)}</div>
       </div>
 
       {/* 続行ボタン */}

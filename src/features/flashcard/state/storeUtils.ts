@@ -17,5 +17,6 @@ export const createEmptyRefs = (): StoreRefs => ({
   frontInput: null,
 });
 
-// ディープコピー（old-site の JSON.parse(JSON.stringify(...)) と同等）
-export const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+// ディープコピー。対象は categories/tags/projects などの純粋な JSON 互換 plain data に限る
+// （DOM 参照・関数・クラスインスタンスを含むものに使うと structuredClone は例外を投げる）。
+export const clone = <T>(v: T): T => structuredClone(v);
