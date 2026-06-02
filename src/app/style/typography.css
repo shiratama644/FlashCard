@@ -1,0 +1,52 @@
+h1, h2, h3, p {
+    margin: 0;
+}
+.text-center {
+    text-align: center;
+}
+.text-left {
+    text-align: left;
+}
+.font-bold {
+    font-weight: 700;
+}
+.font-extrabold {
+    font-weight: 800;
+}
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.whitespace-nowrap {
+    white-space: nowrap;
+}
+.empty-text {
+    text-align: center;
+    margin-top: 2rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+.stats-section-title {
+    font-weight: bold;
+    margin-bottom: 0.75rem;
+    padding: 0 0.25rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+.stats-empty-text {
+    text-align: center;
+    padding: 1rem 0;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.5);
+    grid-column: 1 / -1;
+}
+.empty-tag-text {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+}
+.settings-desc {
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.5);
+}
