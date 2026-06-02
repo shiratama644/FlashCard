@@ -2,15 +2,16 @@
 
 // #global-loader の表示制御（init.js の hideLoader 相当）
 import { useEffect, useRef } from "react";
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreSelector } from "@/features/flashcard/state/StoreProvider";
 
 export function GlobalLoader() {
-  const store = useStore();
+  // isLoaded（boolean）だけを購読。他フィールドの commit では再描画されない。
+  const isLoaded = useStoreSelector((s) => s.isLoaded);
   const ref = useRef<HTMLDivElement>(null);
   const hidden = useRef(false);
 
   useEffect(() => {
-    if (!store.isLoaded || hidden.current) return;
+    if (!isLoaded || hidden.current) return;
     hidden.current = true;
     const loader = ref.current;
     if (loader) {
@@ -20,7 +21,7 @@ export function GlobalLoader() {
         loader.style.display = "none";
       }, 600);
     }
-  }, [store.isLoaded]);
+  }, [isLoaded]);
 
   return (
     <div id="global-loader" ref={ref}>
