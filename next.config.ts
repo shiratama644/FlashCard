@@ -21,9 +21,9 @@ const securityHeaders = [
       // canvas-confetti は blob: 由来の Worker を生成する（old-site は CSP 無しで動作）。
       // Worker 読み込みを許可し、紙吹雪をコンソール警告なしで old-site と同じ挙動にする。
       "worker-src 'self' blob:",
-      // フォントは next/font で self-host('self')。Font Awesome のみ cdnjs を許可。
-      "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
-      "font-src 'self' https://cdnjs.cloudflare.com data:",
+      // フォント・Font Awesome ともに self-host('self')。外部 CDN は不要。
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data:",
       "img-src 'self' data: blob:",
       "connect-src 'self'",
       "frame-ancestors 'none'",

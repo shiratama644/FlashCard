@@ -7,15 +7,14 @@
     "lint": "eslint . --cache",
     "lint:fix": "eslint . --cache --fix",
     "typecheck": "tsc --noEmit",
-    
     "check": "pnpm lint && pnpm typecheck",
     "build": "next build",
     "verify": "pnpm check && pnpm build",
-    
     "start": "next start",
     "serve": "pnpm verify && pnpm start"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.7.2",
     "@tailwindcss/postcss": "^4.3.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
