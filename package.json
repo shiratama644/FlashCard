@@ -7,11 +7,9 @@
     "lint": "eslint . --cache",
     "lint:fix": "eslint . --cache --fix",
     "typecheck": "tsc --noEmit",
-    
     "check": "pnpm lint && pnpm typecheck",
     "build": "next build",
     "verify": "pnpm check && pnpm build",
-    
     "start": "next start",
     "serve": "pnpm verify && pnpm start"
   },
@@ -35,6 +33,7 @@
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
+    "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "postcss": "^8.5.15",
