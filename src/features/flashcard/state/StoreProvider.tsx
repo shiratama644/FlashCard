@@ -76,5 +76,6 @@ export function shallowEqual<T extends Record<string, unknown>>(a: T, b: T): boo
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
-  return keysA.every((key) => Object.is(a[key], b[key]));
+  // b が同名キーを実際に持つことも確認する（undefined 値と欠損キーの誤一致を防ぐ）。
+  return keysA.every((key) => Object.prototype.hasOwnProperty.call(b, key) && Object.is(a[key], b[key]));
 }
