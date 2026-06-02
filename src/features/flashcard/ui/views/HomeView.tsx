@@ -5,12 +5,18 @@ import { useStoreView } from "@/features/flashcard/state/StoreProvider";
 import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 
-// HOME が表示する値（表示中か / 各プロジェクトのタイトル・説明・カテゴリ・枚数 /
-// カテゴリのバッジ名・色）を連結したシグネチャ。内容が変わると文字列も変わる。
+// HOME が表示する値（各プロジェクトのタイトル・説明・カテゴリ・枚数 /
+// カテゴリのバッジ名・色）のシグネチャ。内容が変わると文字列も変わる。
+// ユーザー入力（title/description 等）を含むため、区切り文字の衝突で別状態が
+// 同一文字列になる事故を防ぐべく JSON でエンコードする。
+// HOME 非表示中は内容を走査せず短絡し、commit ごとの再計算を避ける
+// （HOME 表示へ戻る際に currentView が "home" になり再計算される）。
 function homeSignature(store: FlashcardStore): string {
-  const projects = store.projects.map((p) => `${p.id}:${p.title}:${p.description}:${p.categoryId}:${p.cards.length}`).join(",");
-  const categories = store.categories.map((c) => `${c.id}:${c.name}:${c.colorClass}`).join(",");
-  return `${store.currentView}|${projects}|${categories}`;
+  if (store.currentView !== "home") return "inactive";
+  return JSON.stringify([
+    store.projects.map((p) => [p.id, p.title, p.description, p.categoryId, p.cards.length]),
+    store.categories.map((c) => [c.id, c.name, c.colorClass]),
+  ]);
 }
 
 export function HomeView() {

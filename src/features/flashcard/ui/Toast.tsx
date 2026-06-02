@@ -7,10 +7,11 @@ import type { Toast as ToastType } from "@/features/flashcard/data/types";
 import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "./Transition";
 
-// トーストが表示する全要素（id / 表示状態 / 種別 / 文言）を連結したシグネチャ。
+// トーストが表示する全要素（id / 表示状態 / 種別 / 文言）のシグネチャ。
+// 文言にユーザー由来の文字が入りうるため、区切り文字の衝突を防ぐべく JSON でエンコードする。
 // いずれかが変われば文字列も変わり、コンテナだけが選択的に再描画される。
 function toastSignature(store: FlashcardStore): string {
-  return store.toasts.map((t) => `${t.id}:${t.show ? 1 : 0}:${t.type}:${t.message}`).join("|");
+  return JSON.stringify(store.toasts.map((t) => [t.id, t.show, t.type, t.message]));
 }
 
 function ToastItem({ toast }: { toast: ToastType }) {
