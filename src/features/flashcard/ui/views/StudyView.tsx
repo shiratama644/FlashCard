@@ -2,11 +2,37 @@
 
 // 2. STUDY VIEW（index.html 188-339 の忠実移植）
 import { useEffect } from "react";
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 
+// STUDY が表示する値（タイトル / 学習モード / 反転 / 現在位置・総数 /
+// 表示カードの表面・例文・裏面詳細＋タグ名色）のシグネチャ。
+// ユーザー入力（front/value/タイトル等）を含むため、区切り文字の衝突を防ぐべく
+// JSON でエンコードする。ドラッグの座標は React 状態に載せず DOM 直接操作のため
+// 含めない（＝ドラッグ中は再描画しない、という既存の意図を保つ）。
+// STUDY 非表示中は内容を走査せず短絡し、commit ごとの再計算を避ける。
+function studySignature(store: FlashcardStore): string {
+  if (store.currentView !== "study") return "inactive";
+  const card = store.currentCards[store.currentIndex];
+  const details = card
+    ? card.backDetails.map((d) => {
+        const tag = d.tagId ? store.tagMap[String(d.tagId)] : undefined;
+        return [d.tagId ?? null, d.value, tag ? [tag.name, tag.colorClass] : null];
+      })
+    : null;
+  return JSON.stringify([
+    store.isFlipped,
+    store.isReverseMode,
+    store.currentIndex,
+    store.currentCards.length,
+    store.activeProject?.title ?? null,
+    card ? [card.front, card.example ?? null, details] : null,
+  ]);
+}
+
 function CardContainer() {
-  const store = useStore();
+  const store = useStoreView(studySignature);
   const card = store.currentCards[store.currentIndex];
 
   // @mousemove.window / @mouseup.window / @touchmove.window / @touchend.window 相当
@@ -133,7 +159,7 @@ function CardContainer() {
 }
 
 export function StudyView() {
-  const store = useStore();
+  const store = useStoreView(studySignature);
   const hasCards = store.currentCards.length > 0;
 
   return (
