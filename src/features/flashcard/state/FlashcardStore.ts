@@ -150,23 +150,15 @@ export class FlashcardStore {
     requestAnimationFrame(cb);
   }
 
-  // ---- currentView（$watch を setter で再現）----
+  // ---- currentView ----
+  // setter は状態更新（_currentView の代入 + 再描画通知）だけを行う純粋な setter。
+  // ビュー切替に伴う副作用（遷移用 CSS 変数 --tx/--ty の設定、streak の
+  // カウントアップ起動）は ViewTransitionEffects（useLayoutEffect）側へ分離した（SKILL #5）。
   get currentView(): ViewName {
     return this._currentView;
   }
   set currentView(v: ViewName) {
     this._currentView = v;
-    // init.js の $watch('currentView') 相当
-    if (typeof document !== "undefined") {
-      if (["cardList", "stats"].includes(v)) {
-        document.documentElement.style.setProperty("--tx", "2.5rem");
-        document.documentElement.style.setProperty("--ty", "0");
-      } else {
-        document.documentElement.style.setProperty("--tx", "0");
-        document.documentElement.style.setProperty("--ty", "2.5rem");
-      }
-      if (v === "streak") this.animateStreak();
-    }
     this.commit();
   }
 
@@ -206,13 +198,12 @@ export class FlashcardStore {
     setupAnimations();
     await this.loadAndMigrateData();
     this.initStreak();
-    // --tx/--ty の初期値（streak は bottom 方向）
-    if (typeof document !== "undefined") {
-      document.documentElement.style.setProperty("--tx", "0");
-      document.documentElement.style.setProperty("--ty", "2.5rem");
-    }
+    // 遷移用 CSS 変数（--tx/--ty）の初期値は ViewTransitionEffects がマウント時に
+    // 設定する（currentView="streak" → bottom 方向）。ここでは設定しない。
     this.isLoaded = true;
     this._currentView = "streak";
+    // データ確定後に連続記録のカウントアップを起動（currentView は不変なので
+    // ViewTransitionEffects の副作用は再実行されない。ここで明示的に呼ぶ）。
     this.animateStreak();
     this.commit();
   }
