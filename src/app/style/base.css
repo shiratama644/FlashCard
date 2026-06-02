@@ -1,6 +1,6 @@
 @theme {
-  /* フォントのカスタム登録 */
-  --font-sans: "Plus Jakarta Sans", "Noto Sans JP", sans-serif;
+  /* フォントのカスタム登録（next/font の self-host を CSS 変数経由で参照） */
+  --font-sans: var(--font-plus-jakarta-sans), var(--font-noto-sans-jp), sans-serif;
 
   /* イージング関数の登録 */
   --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
@@ -19,7 +19,7 @@
 }
 
 :root {
-    --font-sans: "Plus Jakarta Sans", "Noto Sans JP", sans-serif;
+    --font-sans: var(--font-plus-jakarta-sans), var(--font-noto-sans-jp), sans-serif;
     --color-bg-start: #312e81;
     --color-bg-mid: #581c87;
     --color-bg-end: #0f172a;
