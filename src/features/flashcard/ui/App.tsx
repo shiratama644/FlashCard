@@ -4,7 +4,7 @@
 // SSR と localStorage/Date 由来のハイドレーション不整合を避けるため、
 // 実体はマウント後にのみ描画する（ローダーは常時描画）。
 import { useEffect, useState } from "react";
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreInstance } from "@/features/flashcard/state/StoreProvider";
 import { GlobalLoader } from "./GlobalLoader";
 import { ToastContainer } from "./Toast";
 import { StreakView } from "./views/StreakView";
@@ -20,7 +20,9 @@ import { EditTagModal } from "./modals/EditTagModal";
 import { EditProjectModal } from "./modals/EditProjectModal";
 
 function AppContent() {
-  const store = useStore();
+  // AppContent 自身はレンダリングでストア値を読まない（子が各自で購読する）ため、
+  // ここでは購読しない。これにより commit のたびにツリー全体が再描画されるのを防ぐ。
+  const store = useStoreInstance();
 
   // init.js の keydown / beforeunload リスナー相当
   useEffect(() => {

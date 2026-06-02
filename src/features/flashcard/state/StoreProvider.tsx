@@ -27,7 +27,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 
 // ストアのインスタンス取得（購読しない）。イベントハンドラや ref からの呼び出し用。
-function useStoreInstance(): FlashcardStore {
+// レンダリング時にストア値を読まない（＝再描画不要な）コンポーネントでも利用する。
+export function useStoreInstance(): FlashcardStore {
   const store = useContext(StoreContext);
   if (!store) throw new Error("useStore は StoreProvider の内部で使用してください");
   return store;
@@ -67,6 +68,19 @@ export function useStoreSelector<T>(selector: (store: FlashcardStore) => T, isEq
   }, [store]);
 
   return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
+}
+
+// セレクタが返す「表示シグネチャ」（プリミティブ/文字列）の変化時だけ再描画し、
+// ストア本体を返すフック。ハンドラやレンダリングでは返り値の store を直接読む。
+// 選択的再描画への実用的な入口で、ストアのミューテーション方式は変えない。
+//
+// 【重要】signature には「そのコンポーネントが画面に表示する値」をすべて含めること。
+// 含め漏れると、その値が変わっても再描画されず UI が古いまま残る。
+// in-place 書き換えされるネスト値（cards 等）は参照では検知できないため、
+// id や表示内容を連結した文字列にして「内容が変われば文字列も変わる」ようにする。
+export function useStoreView<T>(signature: (store: FlashcardStore) => T, isEqual: (a: T, b: T) => boolean = Object.is): FlashcardStore {
+  useStoreSelector(signature, isEqual);
+  return useStoreInstance();
 }
 
 // オブジェクト/配列を返すセレクタ向けの浅い比較。

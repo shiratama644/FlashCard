@@ -2,12 +2,20 @@
 
 // トーストコンテナ（index.html の .toast-container 相当）
 import { useEffect } from "react";
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreInstance, useStoreView } from "@/features/flashcard/state/StoreProvider";
 import type { Toast as ToastType } from "@/features/flashcard/data/types";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "./Transition";
 
+// トーストが表示する全要素（id / 表示状態 / 種別 / 文言）を連結したシグネチャ。
+// いずれかが変われば文字列も変わり、コンテナだけが選択的に再描画される。
+function toastSignature(store: FlashcardStore): string {
+  return store.toasts.map((t) => `${t.id}:${t.show ? 1 : 0}:${t.type}:${t.message}`).join("|");
+}
+
 function ToastItem({ toast }: { toast: ToastType }) {
-  const store = useStore();
+  // 表示内容は props の toast から読む。再描画は親（ToastContainer）が担うため購読しない。
+  const store = useStoreInstance();
   // x-init="$nextTick(() => toast.show = true)" 相当
   useEffect(() => {
     requestAnimationFrame(() => store.showToast(toast.id));
@@ -34,7 +42,7 @@ function ToastItem({ toast }: { toast: ToastType }) {
 }
 
 export function ToastContainer() {
-  const store = useStore();
+  const store = useStoreView(toastSignature);
   return (
     <div className="toast-container">
       {store.toasts.map((toast) => (
