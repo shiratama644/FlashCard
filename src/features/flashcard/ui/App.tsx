@@ -1,9 +1,11 @@
 "use client";
 
 // アプリのルート（index.html body の app-wrapper 相当）。
-// SSR と localStorage/Date 由来のハイドレーション不整合を避けるため、
-// 実体はマウント後にのみ描画する（ローダーは常時描画）。
-import { useEffect, useState } from "react";
+// 初期描画はストア初期値（未ロード＝streak ビュー / データ空 / 連続記録 0）で
+// 決定的なため、SSR/SSG でも安全に描画できる（旧来の mounted ゲートは撤去）。
+// データ・ブラウザ API 依存の副作用は各コンポーネントの useEffect 側で実行され、
+// ロード完了までは #global-loader（全画面・最前面）が中身を覆う。
+import { useEffect } from "react";
 import { useStoreInstance } from "@/features/flashcard/state/StoreProvider";
 import { GlobalLoader } from "./GlobalLoader";
 import { ToastContainer } from "./Toast";
@@ -70,13 +72,10 @@ function AppContent() {
 }
 
 export function App() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   return (
     <>
       <GlobalLoader />
-      {mounted && <AppContent />}
+      <AppContent />
     </>
   );
 }
