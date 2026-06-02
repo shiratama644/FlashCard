@@ -1,11 +1,19 @@
 "use client";
 
 // カテゴリ編集モーダル（index.html 749-773）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 
+// 編集中カテゴリの名前と選択中の色のシグネチャ。閉じている間は短絡する。
+function editCategoryModalSignature(store: FlashcardStore): string {
+  if (!store.showEditCategoryModal) return "inactive";
+  const ec = store.editingCategory;
+  return JSON.stringify([ec.name, ec.colorClass]);
+}
+
 export function EditCategoryModal() {
-  const store = useStore();
+  const store = useStoreView(editCategoryModalSignature);
   const ec = store.editingCategory;
 
   return (

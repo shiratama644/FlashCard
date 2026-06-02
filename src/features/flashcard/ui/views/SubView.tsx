@@ -2,12 +2,20 @@
 
 // 共有サブビュー（cardList / stats / categories / settings / ai）
 // index.html 344-573 の忠実移植
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView, useStoreInstance } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 import { Collapse } from "../Collapse";
 
+// 一覧が表示するカード（表面・裏面の意味の連結）のシグネチャ。
+// 当該ビュー非表示中は短絡する。
+function cardListSignature(store: FlashcardStore): string {
+  if (store.currentView !== "cardList") return "inactive";
+  return JSON.stringify(store.currentCards.map((c) => [c.front, c.backDetails.map((d) => d.value)]));
+}
+
 function CardListView() {
-  const store = useStore();
+  const store = useStoreView(cardListSignature);
   return (
     <div className="w-full">
       {store.currentCards.length === 0 && <div className="empty-text">カードがありません</div>}
@@ -33,8 +41,23 @@ function CardListView() {
   );
 }
 
+// 進捗集計とカード別データ（正解/不正解数・状態）のシグネチャ。非表示中は短絡する。
+function statsSignature(store: FlashcardStore): string {
+  if (store.currentView !== "stats") return "inactive";
+  const ps = store.projectStats;
+  return JSON.stringify([
+    ps.mastered,
+    ps.learning,
+    ps.new,
+    ps.masteredRate,
+    ps.learningRate,
+    ps.newRate,
+    store.activeProject?.cards.map((c) => [c.front, c.stats?.likes ?? 0, c.stats?.nopes ?? 0, c.stats?.status ?? "new"]) ?? null,
+  ]);
+}
+
 function StatsView() {
-  const store = useStore();
+  const store = useStoreView(statsSignature);
   const { projectStats, activeProject } = store;
   const statusClass = (card: { stats?: { status: string } }) => {
     if (card.stats?.status === "mastered") return "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
@@ -121,8 +144,25 @@ function StatsView() {
   );
 }
 
+// 新規カテゴリ名と各カテゴリ（名前・色・開閉・タグ入力）および配下タグのシグネチャ。
+// 非表示中は短絡する。
+function categoriesSignature(store: FlashcardStore): string {
+  if (store.currentView !== "categories") return "inactive";
+  return JSON.stringify([
+    store.newCategoryName,
+    store.categories.map((cat) => [
+      cat.id,
+      cat.name,
+      cat.colorClass,
+      cat.expanded ?? false,
+      cat.newTagName ?? "",
+      store.getTagsByCategory(cat.id).map((t) => [t.id, t.name, t.colorClass]),
+    ]),
+  ]);
+}
+
 function CategoriesView() {
-  const store = useStore();
+  const store = useStoreView(categoriesSignature);
   return (
     <div className="w-full">
       <div className="input-group">
@@ -210,7 +250,8 @@ function CategoriesView() {
 }
 
 function SettingsView() {
-  const store = useStore();
+  // 表示する動的な状態を持たない（操作ハンドラのみ）。購読は不要。
+  const store = useStoreInstance();
   return (
     <div className="settings-container">
       <div className="glass-panel-sm p-5">
@@ -226,8 +267,15 @@ function SettingsView() {
   );
 }
 
+// AI タブの選択・テーマ入力・生成プロンプト・コピー状態・インポート文字列のシグネチャ。
+// 非表示中は短絡する。
+function aiSignature(store: FlashcardStore): string {
+  if (store.currentView !== "ai") return "inactive";
+  return JSON.stringify([store.aiTab, store.aiTheme, store.generatedPrompt, store.copySuccess, store.importJsonText]);
+}
+
 function AiView() {
-  const store = useStore();
+  const store = useStoreView(aiSignature);
   return (
     <div className="ai-container">
       <div className="ai-tabs">
@@ -289,8 +337,15 @@ function AiView() {
   );
 }
 
+// サブビューの外枠（表示状態・現在ビュー・ヘッダのアイコン/タイトル）のシグネチャ。
+// サブビュー非表示中は短絡する（内側ビューはそれぞれ自前で購読する）。
+function subViewSignature(store: FlashcardStore): string {
+  if (!store.isSubView) return "inactive";
+  return JSON.stringify([store.currentView, store.subViewIcon, store.subViewTitle]);
+}
+
 export function SubView() {
-  const store = useStore();
+  const store = useStoreView(subViewSignature);
   const view = store.currentView;
 
   return (

@@ -30,15 +30,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 // レンダリング時にストア値を読まない（＝再描画不要な）コンポーネントでも利用する。
 export function useStoreInstance(): FlashcardStore {
   const store = useContext(StoreContext);
-  if (!store) throw new Error("useStore は StoreProvider の内部で使用してください");
-  return store;
-}
-
-// ストア全体の変更に追従する（commit のたびに再描画）。従来 useStore と同じ挙動。
-// 既存コンポーネントの後方互換用。新規・移行では useStoreSelector を推奨。
-export function useStore(): FlashcardStore {
-  const store = useStoreInstance();
-  useSyncExternalStore(store.subscribe, store.getSnapshot, store.getServerSnapshot);
+  if (!store) throw new Error("ストアのフックは StoreProvider の内部で使用してください");
   return store;
 }
 

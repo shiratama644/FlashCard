@@ -1,12 +1,26 @@
 "use client";
 
 // プロジェクト編集モーダル（index.html 801-834）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 import { CustomSelect } from "../CustomSelect";
 
+// 編集中プロジェクトの各値とカテゴリ候補のシグネチャ。閉じている間は短絡する。
+function editProjectModalSignature(store: FlashcardStore): string {
+  if (!store.showEditProjectModal) return "inactive";
+  const ep = store.editingProject;
+  return JSON.stringify([
+    ep.id,
+    ep.categoryId,
+    ep.title,
+    ep.description,
+    store.categories.map((c) => [c.id, c.name, c.colorClass]),
+  ]);
+}
+
 export function EditProjectModal() {
-  const store = useStore();
+  const store = useStoreView(editProjectModalSignature);
   const ep = store.editingProject;
   const options = store.categories.map((c) => ({ id: c.id, name: c.name, colorClass: c.colorClass }));
 

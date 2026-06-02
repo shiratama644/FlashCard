@@ -1,11 +1,19 @@
 "use client";
 
 // タグ編集モーダル（index.html 775-799）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 
+// 編集中タグの名前と選択中の色のシグネチャ。閉じている間は短絡する。
+function editTagModalSignature(store: FlashcardStore): string {
+  if (!store.showEditTagModal) return "inactive";
+  const et = store.editingTag;
+  return JSON.stringify([et.name, et.colorClass]);
+}
+
 export function EditTagModal() {
-  const store = useStore();
+  const store = useStoreView(editTagModalSignature);
   const et = store.editingTag;
 
   return (

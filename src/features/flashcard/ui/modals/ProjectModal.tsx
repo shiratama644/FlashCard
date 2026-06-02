@@ -1,12 +1,25 @@
 "use client";
 
 // プロジェクト追加モーダル（index.html 640-670）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 import { CustomSelect } from "../CustomSelect";
 
+// 入力中の各フィールドとカテゴリ候補（id/名前/色）のシグネチャ。
+// 閉じている間は短絡する。
+function projectModalSignature(store: FlashcardStore): string {
+  if (!store.showProjectModal) return "inactive";
+  return JSON.stringify([
+    store.newProjectCategoryId,
+    store.newProjectTitle,
+    store.newProjectDesc,
+    store.categories.map((c) => [c.id, c.name, c.colorClass]),
+  ]);
+}
+
 export function ProjectModal() {
-  const store = useStore();
+  const store = useStoreView(projectModalSignature);
   const options = store.categories.map((c) => ({ id: c.id, name: c.name, colorClass: c.colorClass }));
 
   return (

@@ -1,11 +1,18 @@
 "use client";
 
 // 完了画面（index.html 597-638）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 
+// 完了画面の正解率ドーナツとセッション集計のシグネチャ。非表示中は短絡する。
+function completeSignature(store: FlashcardStore): string {
+  if (!store.isCompleted) return "inactive";
+  return JSON.stringify([store.donutPercentage, store.sessionStats.like, store.sessionStats.nope]);
+}
+
 export function CompleteOverlay() {
-  const store = useStore();
+  const store = useStoreView(completeSignature);
 
   return (
     <Transition
