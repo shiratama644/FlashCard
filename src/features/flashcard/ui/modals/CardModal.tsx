@@ -46,7 +46,7 @@ export function CardModal() {
           <div className="detail-group">
             <div className="detail-header" onClick={() => store.update(() => (store.isBackDetailsExpanded = !store.isBackDetailsExpanded))}>
               <span className="detail-header-title">裏面 (意味・詳細)</span>
-              <i className={`fa-solid fa-chevron-right select-icon ${store.isBackDetailsExpanded ? "rotated" : ""}`}></i>
+              <i className={`fa-solid fa-chevron-right chevron-icon ${store.isBackDetailsExpanded ? "rotated" : ""}`}></i>
             </div>
 
             <Collapse show={store.isBackDetailsExpanded}>
@@ -55,7 +55,7 @@ export function CardModal() {
                   <div key={"detail_" + index} className="detail-item">
                     <div className="detail-item-header" onClick={() => store.update(() => (detail.expanded = !detail.expanded))}>
                       <div className="flex items-center gap-2">
-                        <i className={`fa-solid fa-chevron-right select-icon ${detail.expanded ? "rotated" : ""}`}></i>
+                        <i className={`fa-solid fa-chevron-right chevron-icon ${detail.expanded ? "rotated" : ""}`}></i>
                         <span className="detail-header-title">{detail.value ? detail.value : "新しい意味"}</span>
                       </div>
                       <button
