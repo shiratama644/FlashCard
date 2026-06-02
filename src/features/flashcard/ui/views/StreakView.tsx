@@ -1,12 +1,25 @@
 "use client";
 
 // 0. STREAK VIEW（index.html 48-113 の忠実移植）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 import { buildStreakMessage } from "./streakMessage";
 
+// STREAK が表示する値（アニメ中のカウント displayStreak / 連続日数 /
+// 週カレンダーの曜日名・本日・学習済みフラグ）のシグネチャ。
+// 非表示中は短絡し、commit ごとの再計算を避ける。
+function streakSignature(store: FlashcardStore): string {
+  if (store.currentView !== "streak") return "inactive";
+  return JSON.stringify([
+    store.displayStreak,
+    store.streakData.currentStreak,
+    store.weekDays.map((d) => [d.dayName, d.isToday, d.isStudied]),
+  ]);
+}
+
 export function StreakView() {
-  const store = useStore();
+  const store = useStoreView(streakSignature);
   const { weekDays } = store;
 
   return (

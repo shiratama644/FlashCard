@@ -1,11 +1,19 @@
 "use client";
 
 // カスタムダイアログ（Alert/Confirm）index.html 581-595
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import { Transition } from "../Transition";
 
+// ダイアログの種別・文言・ボタンラベルのシグネチャ。閉じている間は短絡する。
+function dialogSignature(store: FlashcardStore): string {
+  const { dialog } = store;
+  if (!dialog.show) return "inactive";
+  return JSON.stringify([dialog.type, dialog.title, dialog.message, dialog.cancelText, dialog.confirmText]);
+}
+
 export function DialogModal() {
-  const store = useStore();
+  const store = useStoreView(dialogSignature);
   const { dialog } = store;
 
   return (

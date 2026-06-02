@@ -31,11 +31,11 @@ import { createEmptyRefs, type AnyDetail, type StoreRefs } from "./storeUtils";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FlashcardStore {
   // ---- React 連携（useSyncExternalStore 用の外部ストア API）----
-  // commit() のたびに version を進め、購読中のコンポーネントへ再描画を通知する。
-  // version はプリミティブなので、getSnapshot がミュータブルなインスタンス参照を
-  // そのまま返してしまう落とし穴（変更が検知されない）を構造的に回避できる。
+  // commit() で購読中のリスナーへ通知するだけのシンプルな外部ストア。
+  // 各コンポーネントは useStoreSelector / useStoreView で「自分が表示する値の
+  // シグネチャ」だけを購読するため、ストア全体のスナップショットは持たない
+  // （ミュータブルなインスタンス参照を返してしまう getSnapshot の落とし穴を回避）。
   private listeners = new Set<() => void>();
-  private version = 0;
   refs: StoreRefs = createEmptyRefs();
   dragLoop: RenderLoop | null = null;
   saveTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -48,13 +48,8 @@ export class FlashcardStore {
       this.listeners.delete(listener);
     };
   };
-  // 現在のスナップショット（version）。commit ごとに変化する。
-  getSnapshot = (): number => this.version;
-  // SSR 用スナップショット（ハイドレーション不一致を避けるため固定値）。
-  getServerSnapshot = (): number => 0;
   // 状態更新の確定。Alpine の「リアクティブ再描画」相当（旧 forceUpdate）。
   commit = (): void => {
-    this.version += 1;
     this.listeners.forEach((listener) => listener());
   };
 

@@ -1,14 +1,29 @@
 "use client";
 
 // カード追加・編集モーダル（index.html 672-747）
-import { useStore } from "@/features/flashcard/state/StoreProvider";
+import { useStoreView } from "@/features/flashcard/state/StoreProvider";
+import type { FlashcardStore } from "@/features/flashcard/state/FlashcardStore";
 import type { Id } from "@/features/flashcard/data/types";
 import { Transition } from "../Transition";
 import { Collapse } from "../Collapse";
 import { CustomSelect } from "../CustomSelect";
 
+// 表面・裏面詳細（各意味の値・開閉・タグとその表示名）・例文・
+// 編集中インデックス・タグ候補のシグネチャ。閉じている間は短絡する。
+function cardModalSignature(store: FlashcardStore): string {
+  if (!store.showCardModal) return "inactive";
+  return JSON.stringify([
+    store.editingCardIndex,
+    store.newCardFront,
+    store.isBackDetailsExpanded,
+    store.newCardExample,
+    store.newCardDetails.map((d) => [d.tagId ?? null, d.value, d.expanded ?? false, d.tagId ? store.tagMap[String(d.tagId)]?.name ?? null : null]),
+    store.getTagsForCurrentProject().map((t) => [t.id, t.name, t.colorClass]),
+  ]);
+}
+
 export function CardModal() {
-  const store = useStore();
+  const store = useStoreView(cardModalSignature);
   const tagOptions = store.getTagsForCurrentProject().map((t) => ({ id: t.id, name: t.name, colorClass: t.colorClass }));
 
   return (
