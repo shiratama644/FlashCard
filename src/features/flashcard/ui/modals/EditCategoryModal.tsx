@@ -32,14 +32,14 @@ export function EditCategoryModal() {
     >
       <div className="modal-content">
         <h2 className="modal-title">カテゴリを編集</h2>
-        <input type="text" value={ec.name} onChange={(e) => store.update(() => (ec.name = e.target.value))} placeholder="カテゴリ名" className="input-field mb-4" />
+        <input type="text" value={ec.name} onChange={(e) => store.update(() => (store.editingCategory = { ...store.editingCategory, name: e.target.value }))} placeholder="カテゴリ名" className="input-field mb-4" />
 
         <label className="input-label">カラー</label>
         <div className="color-picker">
           {store.tagColors.map((color) => (
             <button
               key={color}
-              onClick={() => store.update(() => (ec.colorClass = color))}
+              onClick={() => store.update(() => (store.editingCategory = { ...store.editingCategory, colorClass: color }))}
               className={`color-btn ${ec.colorClass === color ? "selected" : ""}`}
               style={{ backgroundColor: store.getColorCode(color) }}
             ></button>

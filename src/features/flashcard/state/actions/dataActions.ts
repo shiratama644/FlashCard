@@ -56,9 +56,12 @@ export const createDataActions = (store: FlashcardStore): DataActions => ({
     if (!store.activeProject) return;
     const total = store.activeProject.cards.length;
     if (total === 0) return;
-    store.projectStats.masteredRate = (store.projectStats.mastered / total) * 100;
-    store.projectStats.learningRate = (store.projectStats.learning / total) * 100;
-    store.projectStats.newRate = (store.projectStats.new / total) * 100;
+    store.projectStats = {
+      ...store.projectStats,
+      masteredRate: (store.projectStats.mastered / total) * 100,
+      learningRate: (store.projectStats.learning / total) * 100,
+      newRate: (store.projectStats.new / total) * 100,
+    };
   },
   async loadAndMigrateData(): Promise<void> {
     try {
@@ -89,11 +92,11 @@ export const createDataActions = (store: FlashcardStore): DataActions => ({
         }
         store.forceSave();
       }
-      store.projects.forEach((p) => {
-        p.cards.forEach((c) => {
-          if (!c.stats) c.stats = { likes: 0, nopes: 0, status: "new" };
-        });
-      });
+      // stats 未設定のカードだけ初期値を補完した新しい projects を構築する（in-place 補完を避ける）。
+      store.projects = store.projects.map((p) => ({
+        ...p,
+        cards: p.cards.map((c) => (c.stats ? c : { ...c, stats: { likes: 0, nopes: 0, status: "new" } })),
+      }));
       store.updateMaps();
       store.commit();
     } catch {
