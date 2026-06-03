@@ -34,10 +34,6 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  // React Compiler（自動メモ化）。手動 memo/useMemo/useCallback なしで再描画を最適化する。
-  // Next.js が SWC で対象ファイル（JSX/Hooks を含むもの）にだけ Babel プラグインを適用する。
-  reactCompiler: true,
-
   ...(isStaticExport && {
     output: "export",
     trailingSlash: true,
