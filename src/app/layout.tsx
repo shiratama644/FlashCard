@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 import "./globals.css";
 import { notoSansJp, plusJakartaSans } from "./fonts";
 
@@ -17,10 +18,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja" className={`${plusJakartaSans.variable} ${notoSansJp.variable}`}>
-      <head>
-        {/* フォントは next/font で self-host（fonts.ts）。Font Awesome は CDN のまま。 */}
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-      </head>
+      {/* フォントは next/font で self-host（fonts.ts）。Font Awesome も
+          @fortawesome/fontawesome-free を import して self-host（先頭の import 参照）。 */}
       <body className="app-body">{children}</body>
     </html>
   );
