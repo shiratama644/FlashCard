@@ -8,6 +8,7 @@
 import { useEffect } from "react";
 import { useStoreInstance } from "@/features/flashcard/state/StoreProvider";
 import { GlobalLoader } from "./GlobalLoader";
+import { ViewTransitionEffects } from "./ViewTransitionEffects";
 import { ToastContainer } from "./Toast";
 import { StreakView } from "./views/StreakView";
 import { HomeView } from "./views/HomeView";
@@ -51,6 +52,7 @@ function AppContent() {
 
   return (
     <div className="app-wrapper">
+      <ViewTransitionEffects />
       <ToastContainer />
 
       <div className="app-container">
