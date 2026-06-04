@@ -181,7 +181,7 @@ function CategoriesView() {
       <div className="category-grid">
         {store.categories.map((cat) => (
           <div key={String(cat.id)} className="category-card">
-            <div className="category-header" onClick={() => store.update(() => (cat.expanded = !cat.expanded))}>
+            <div className="category-header" onClick={() => store.toggleCategoryExpanded(cat.id)}>
               <div className="category-title-wrap">
                 <i className={`fa-solid fa-chevron-right chevron-icon ${cat.expanded ? "rotated" : ""}`}></i>
                 <span className={`color-dot ${cat.colorClass.split(" ")[0]}`}></span>
@@ -215,7 +215,7 @@ function CategoriesView() {
                   <input
                     type="text"
                     value={cat.newTagName || ""}
-                    onChange={(e) => store.update(() => (cat.newTagName = e.target.value))}
+                    onChange={(e) => store.setCategoryNewTagName(cat.id, e.target.value)}
                     placeholder="新しいタグ名"
                     className="input-field input-field-sm"
                   />

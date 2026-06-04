@@ -50,11 +50,11 @@ export function EditProjectModal() {
           value={ep.categoryId}
           placeholder="カテゴリを選択 (必須)"
           options={options}
-          onChange={(id) => store.update(() => (ep.categoryId = id))}
+          onChange={(id) => store.update(() => (store.editingProject = { ...store.editingProject, categoryId: id }))}
         />
 
-        <input type="text" value={ep.title} onChange={(e) => store.update(() => (ep.title = e.target.value))} placeholder="プロジェクト名" className="input-field mb-3" />
-        <input type="text" value={ep.description} onChange={(e) => store.update(() => (ep.description = e.target.value))} placeholder="説明 (任意)" className="input-field mb-6" />
+        <input type="text" value={ep.title} onChange={(e) => store.update(() => (store.editingProject = { ...store.editingProject, title: e.target.value }))} placeholder="プロジェクト名" className="input-field mb-3" />
+        <input type="text" value={ep.description} onChange={(e) => store.update(() => (store.editingProject = { ...store.editingProject, description: e.target.value }))} placeholder="説明 (任意)" className="input-field mb-6" />
 
         <div className="modal-footer">
           <button onClick={() => store.update(() => (store.showEditProjectModal = false))} className="btn-secondary">

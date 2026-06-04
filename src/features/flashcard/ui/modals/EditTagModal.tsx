@@ -32,14 +32,14 @@ export function EditTagModal() {
     >
       <div className="modal-content">
         <h2 className="modal-title">タグを編集</h2>
-        <input type="text" value={et.name} onChange={(e) => store.update(() => (et.name = e.target.value))} placeholder="タグ名" className="input-field mb-4" />
+        <input type="text" value={et.name} onChange={(e) => store.update(() => (store.editingTag = { ...store.editingTag, name: e.target.value }))} placeholder="タグ名" className="input-field mb-4" />
 
         <label className="input-label">カラー</label>
         <div className="color-picker">
           {store.tagColors.map((color) => (
             <button
               key={color}
-              onClick={() => store.update(() => (et.colorClass = color))}
+              onClick={() => store.update(() => (store.editingTag = { ...store.editingTag, colorClass: color }))}
               className={`color-btn ${et.colorClass === color ? "selected" : ""}`}
               style={{ backgroundColor: store.getColorCode(color) }}
             ></button>

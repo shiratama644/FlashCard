@@ -25,7 +25,7 @@ export const createStreakActions = (store: FlashcardStore): StreakActions => ({
     if (store.streakData.lastStudyDate) {
       const lastDate = new Date(store.streakData.lastStudyDate);
       const diffDays = Math.floor((today.setHours(0, 0, 0, 0) - lastDate.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
-      if (diffDays > 1) store.streakData.currentStreak = 0;
+      if (diffDays > 1) store.streakData = { ...store.streakData, currentStreak: 0 };
     }
     store.generateWeekDays();
     store.commit();
@@ -37,28 +37,29 @@ export const createStreakActions = (store: FlashcardStore): StreakActions => ({
   generateWeekDays(): void {
     const today = new Date();
     const days = ["日", "月", "火", "水", "木", "金", "土"];
-    store.weekDays = [];
+    const weekDays: typeof store.weekDays = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const dateStr = store.formatDate(d);
-      store.weekDays.push({ date: dateStr, dayName: days[d.getDay()], isStudied: store.streakData.studyHistory.includes(dateStr), isToday: i === 0 });
+      weekDays.push({ date: dateStr, dayName: days[d.getDay()], isStudied: store.streakData.studyHistory.includes(dateStr), isToday: i === 0 });
     }
+    store.weekDays = weekDays;
   },
   markStudyComplete(): void {
     const todayStr = store.formatDate(new Date());
     if (store.streakData.lastStudyDate !== todayStr) {
+      let currentStreak: number;
       if (store.streakData.lastStudyDate) {
         const lastDate = new Date(store.streakData.lastStudyDate);
         const todayDate = new Date();
         const diffDays = Math.floor((todayDate.setHours(0, 0, 0, 0) - lastDate.setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) store.streakData.currentStreak++;
-        else store.streakData.currentStreak = 1;
+        currentStreak = diffDays === 1 ? store.streakData.currentStreak + 1 : 1;
       } else {
-        store.streakData.currentStreak = 1;
+        currentStreak = 1;
       }
-      store.streakData.lastStudyDate = todayStr;
-      if (!store.streakData.studyHistory.includes(todayStr)) store.streakData.studyHistory.push(todayStr);
+      const studyHistory = store.streakData.studyHistory.includes(todayStr) ? store.streakData.studyHistory : [...store.streakData.studyHistory, todayStr];
+      store.streakData = { ...store.streakData, currentStreak, lastStudyDate: todayStr, studyHistory };
       if (typeof localStorage !== "undefined") localStorage.setItem("flashcard_streak_data", JSON.stringify(store.streakData));
       store.generateWeekDays();
       store.commit();

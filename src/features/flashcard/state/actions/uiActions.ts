@@ -19,14 +19,14 @@ export const createUiActions = (store: FlashcardStore): UiActions => ({
   },
   addToast(message: string, type: Toast["type"] = "info"): void {
     const id = Date.now() + Math.random();
-    store.toasts.push({ id, message, type, show: false });
+    store.toasts = [...store.toasts, { id, message, type, show: false }];
     store.commit();
     setTimeout(() => store.removeToast(id), 3000);
   },
   removeToast(id: number): void {
     const toast = store.toasts.find((t) => t.id === id);
     if (toast) {
-      toast.show = false;
+      store.toasts = store.toasts.map((t) => (t.id === id ? { ...t, show: false } : t));
       store.commit();
       setTimeout(() => {
         store.toasts = store.toasts.filter((t) => t.id !== id);
@@ -38,7 +38,7 @@ export const createUiActions = (store: FlashcardStore): UiActions => ({
   showToast(id: number): void {
     const toast = store.toasts.find((t) => t.id === id);
     if (toast && !toast.show) {
-      toast.show = true;
+      store.toasts = store.toasts.map((t) => (t.id === id ? { ...t, show: true } : t));
       store.commit();
     }
   },
@@ -52,11 +52,11 @@ export const createUiActions = (store: FlashcardStore): UiActions => ({
   },
   confirmDialog(): void {
     if (store.dialog.onConfirm) store.dialog.onConfirm();
-    store.dialog.show = false;
+    store.dialog = { ...store.dialog, show: false };
     store.commit();
   },
   cancelDialog(): void {
-    store.dialog.show = false;
+    store.dialog = { ...store.dialog, show: false };
     store.commit();
   },
 });
