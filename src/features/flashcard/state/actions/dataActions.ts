@@ -127,12 +127,10 @@ export const createDataActions = (store: FlashcardStore): DataActions => ({
     store.isSaving = true;
     store.saveQueue = false;
     try {
-      // 永続化はアダプタに委譲する（plain data 化・差分削除はアダプタ内で実施）。
-      await store.adapter.saveAll({
-        categories: store.categories,
-        tags: store.tags,
-        projects: store.projects,
-      });
+      // 保存中のストア変化と切り離すため、呼び出し側で plain data の隔離スナップショットを作って渡す
+      //（保存先=アダプタに依らず整合性を保証する。アダプタは受領時点で隔離済みとみなせる）。
+      const snapshot = clone({ categories: store.categories, tags: store.tags, projects: store.projects });
+      await store.adapter.saveAll(snapshot);
     } catch {
       store.addToast("データの保存に失敗しました", "error");
     } finally {

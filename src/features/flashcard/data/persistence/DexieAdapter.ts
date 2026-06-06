@@ -15,19 +15,16 @@ export class DexieAdapter implements PersistenceAdapter {
   }
 
   async saveAll(data: PersistenceSnapshot): Promise<void> {
-    // Dexie に渡す前に plain data 化する（class/proxy 混入を防ぐ）。
-    const plainCategories = structuredClone(data.categories);
-    const plainTags = structuredClone(data.tags);
-    const plainProjects = structuredClone(data.projects);
-
+    // data は呼び出し側で隔離済みの plain スナップショット（PersistenceAdapter の契約）。
+    // そのため再 clone はせず、そのまま Dexie へ書き込む。
     await db.transaction("rw", db.categories, db.tags, db.projects, async () => {
       const existingCatIds = await db.categories.toCollection().primaryKeys();
       const existingTagIds = await db.tags.toCollection().primaryKeys();
       const existingProjIds = await db.projects.toCollection().primaryKeys();
 
-      const newCatIds = plainCategories.map((c) => c.id);
-      const newTagIds = plainTags.map((t) => t.id);
-      const newProjIds = plainProjects.map((p) => p.id);
+      const newCatIds = data.categories.map((c) => c.id);
+      const newTagIds = data.tags.map((t) => t.id);
+      const newProjIds = data.projects.map((p) => p.id);
 
       const catsToDelete = existingCatIds.filter((id) => !newCatIds.includes(id as Id));
       const tagsToDelete = existingTagIds.filter((id) => !newTagIds.includes(id as Id));
@@ -37,9 +34,9 @@ export class DexieAdapter implements PersistenceAdapter {
       if (tagsToDelete.length > 0) await db.tags.bulkDelete(tagsToDelete);
       if (projsToDelete.length > 0) await db.projects.bulkDelete(projsToDelete);
 
-      await db.categories.bulkPut(plainCategories);
-      await db.tags.bulkPut(plainTags);
-      await db.projects.bulkPut(plainProjects);
+      await db.categories.bulkPut(data.categories);
+      await db.tags.bulkPut(data.tags);
+      await db.projects.bulkPut(data.projects);
     });
   }
 }
