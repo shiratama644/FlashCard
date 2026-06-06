@@ -16,5 +16,9 @@ export interface PersistenceAdapter {
   //（初期データ投入が必要かどうかの判定は呼び出し側で行う）。
   loadAll(): Promise<PersistenceSnapshot | null>;
   // スナップショットを永続化する（全件 upsert + 保存先にしか無い不要分を削除）。
+  //
+  // 【実装契約】呼び出し側はストアの「生の参照」を渡す（ミュータブルに更新されうる）。
+  // 実装側は非同期処理に入る前に必ず structuredClone 等で入力をスナップショット化し、
+  // 保存中にストアが変化しても整合した内容を書き込むこと（DexieAdapter は冒頭で clone 済み）。
   saveAll(data: PersistenceSnapshot): Promise<void>;
 }
