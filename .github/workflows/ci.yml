@@ -18,10 +18,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # pnpm のバージョンは package.json の packageManager フィールドから解決する
+      # （version を併記すると ERR_PNPM_BAD_PM_VERSION で衝突するため指定しない）。
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 11.5.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
