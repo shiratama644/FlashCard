@@ -70,7 +70,7 @@ export interface WeekDay {
 }
 
 export interface Toast {
-  id: number;
+  id: string;
   message: string;
   type: "info" | "success" | "error";
   show: boolean;

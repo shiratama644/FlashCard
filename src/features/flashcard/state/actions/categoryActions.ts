@@ -33,7 +33,7 @@ export const createCategoryActions = (store: FlashcardStore): CategoryActions =>
   },
   addCategory(): void {
     if (!store.newCategoryName.trim()) return;
-    store.categories = [...store.categories, { id: "cat_" + Date.now(), name: store.newCategoryName.trim(), colorClass: store.getRandomColor(), expanded: true, newTagName: "" }];
+    store.categories = [...store.categories, { id: crypto.randomUUID(), name: store.newCategoryName.trim(), colorClass: store.getRandomColor(), expanded: true, newTagName: "" }];
     store.newCategoryName = "";
     store.updateMaps();
     store.forceSave();
@@ -72,7 +72,7 @@ export const createCategoryActions = (store: FlashcardStore): CategoryActions =>
   },
   addTagToCategory(category: Category): void {
     if (!category.newTagName || !category.newTagName.trim()) return;
-    store.tags = [...store.tags, { id: Date.now(), name: category.newTagName.trim(), categoryId: category.id, colorClass: store.getRandomColor() }];
+    store.tags = [...store.tags, { id: crypto.randomUUID(), name: category.newTagName.trim(), categoryId: category.id, colorClass: store.getRandomColor() }];
     store.categories = replaceWhere(store.categories, (c) => c.id === category.id, (c) => ({ ...c, newTagName: "" }));
     store.updateMaps();
     store.forceSave();

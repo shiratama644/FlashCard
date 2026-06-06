@@ -135,7 +135,7 @@ export const createAiActions = (store: FlashcardStore): AiActions => ({
 
       if (data.categories && Array.isArray(data.categories)) {
         const newCategories: Category[] = data.categories.map((cat: { id: string; name?: string; colorClass?: string }) => {
-          const newId = "cat_ai_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+          const newId = crypto.randomUUID();
           catIdMap[cat.id] = newId;
           return { id: newId, name: cat.name || "AIカテゴリ", colorClass: cat.colorClass || store.getRandomColor(), expanded: false, newTagName: "" };
         });
@@ -144,7 +144,7 @@ export const createAiActions = (store: FlashcardStore): AiActions => ({
 
       if (data.tags && Array.isArray(data.tags)) {
         const newTags: Tag[] = data.tags.map((tag: { id: string; name?: string; categoryId?: string; colorClass?: string }) => {
-          const newId = "tag_ai_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+          const newId = crypto.randomUUID();
           tagIdMap[tag.id] = newId;
           return { id: newId, name: tag.name || "AIタグ", categoryId: (tag.categoryId && catIdMap[tag.categoryId]) || tag.categoryId || "", colorClass: tag.colorClass || store.getRandomColor() };
         });
@@ -152,7 +152,7 @@ export const createAiActions = (store: FlashcardStore): AiActions => ({
       }
 
       const importedProjects: Project[] = data.projects.map((proj: { id?: string; title?: string; description?: string; categoryId?: string; cards?: AnyDetailCard[] }) => {
-        const newProjId = "proj_ai_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        const newProjId = crypto.randomUUID();
         const newCards: Card[] = (proj.cards || []).map((card) => {
           const newDetails: BackDetail[] = (card.backDetails || []).map((detail) => ({ tagId: (detail.tagId && tagIdMap[detail.tagId]) || detail.tagId || "", value: detail.value || "", expanded: false }));
           return { front: card.front || "", backDetails: newDetails, example: card.example || "", stats: { likes: 0, nopes: 0, status: "new" } };
