@@ -69,7 +69,7 @@ export const createProjectActions = (store: FlashcardStore): ProjectActions => (
   },
   addProject(): void {
     if (!store.newProjectTitle.trim() || !store.newProjectCategoryId) return;
-    store.projects = [{ id: Date.now(), title: store.newProjectTitle, description: store.newProjectDesc, categoryId: store.newProjectCategoryId, cards: [] }, ...store.projects];
+    store.projects = [{ id: crypto.randomUUID(), title: store.newProjectTitle, description: store.newProjectDesc, categoryId: store.newProjectCategoryId, cards: [] }, ...store.projects];
     store.newProjectTitle = "";
     store.newProjectDesc = "";
     store.newProjectCategoryId = "";
