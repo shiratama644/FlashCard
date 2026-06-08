@@ -45,10 +45,15 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   let customerId: string | null = userRow?.stripe_customer_id ?? null;
   if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: session.user?.email ?? undefined,
-      metadata: { userId },
-    });
+    // userId 由来の idempotency key を付与し、同時/再送リクエストでも同一 customer を返させる
+    //（二重作成→孤立 customer で Portal が別 customer を開く TOCTOU を防止）。
+    const customer = await stripe.customers.create(
+      {
+        email: session.user?.email ?? undefined,
+        metadata: { userId },
+      },
+      { idempotencyKey: `customer-create-${userId}` },
+    );
     customerId = customer.id;
     // users 行を upsert し、customer id を保存（tier は触らない＝既存値を保持）。
     const { error: upsertError } = await supabase
