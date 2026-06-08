@@ -22,11 +22,13 @@ async function resolveUserId(
 ): Promise<string | null> {
   if (hints.userId) return hints.userId;
   if (!hints.customerId) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .select("id")
     .eq("stripe_customer_id", hints.customerId)
     .maybeSingle();
+  // DB エラーは throw して 500 を返す（Stripe にリトライさせ、tier 更新を取りこぼさない）。
+  if (error) throw new Error(error.message);
   return data?.id ?? null;
 }
 
@@ -39,7 +41,9 @@ async function setTier(
   // id をキーに upsert（行が無くても作る）。customerId が判れば併せて保存する。
   const row: { id: string; tier: "free" | "premium"; stripe_customer_id?: string } = { id: userId, tier };
   if (customerId) row.stripe_customer_id = customerId;
-  await supabase.from("users").upsert(row, { onConflict: "id" });
+  const { error } = await supabase.from("users").upsert(row, { onConflict: "id" });
+  // upsert 失敗は throw して 500 を返す（200 ack で tier 更新を握りつぶさない）。
+  if (error) throw new Error(error.message);
 }
 
 // サブスクの status から premium 判定する（有効なものだけ premium）。
@@ -81,6 +85,7 @@ export async function POST(req: Request): Promise<NextResponse> {
           customerId,
         });
         if (userId) await setTier(supabase, userId, "premium", customerId);
+        else console.warn(`[stripe webhook] userId 未解決のため tier 更新をスキップ: ${event.type} customer=${customerId}`);
         break;
       }
       case "customer.subscription.updated":
@@ -94,6 +99,8 @@ export async function POST(req: Request): Promise<NextResponse> {
         if (userId) {
           const premium = event.type === "customer.subscription.updated" && isActiveStatus(sub.status);
           await setTier(supabase, userId, premium ? "premium" : "free", customerId);
+        } else {
+          console.warn(`[stripe webhook] userId 未解決のため tier 更新をスキップ: ${event.type} customer=${customerId}`);
         }
         break;
       }
