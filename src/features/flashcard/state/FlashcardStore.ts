@@ -24,9 +24,14 @@ import { createProjectActions, type ProjectActions } from "./actions/projectActi
 import { createStudyActions, type StudyActions } from "./actions/studyActions";
 import { createStreakActions, type StreakActions } from "./actions/streakActions";
 import { createUiActions, type UiActions } from "./actions/uiActions";
-import { createEmptyRefs, type AnyDetail, type StoreRefs } from "./storeUtils";
+import { clone, createEmptyRefs, type AnyDetail, type StoreRefs } from "./storeUtils";
 import { DexieAdapter } from "../data/persistence/DexieAdapter";
-import type { PersistenceAdapter } from "../data/persistence/types";
+import { SupabaseAdapter } from "../data/persistence/SupabaseAdapter";
+import type { PersistenceAdapter, PersistenceSnapshot } from "../data/persistence/types";
+
+// クライアントから見たティア。premium のときだけクラウド(Supabase)アダプタを使う。
+// 未ログイン(guest)・無料(free)は従来どおり IndexedDB(Dexie) のまま。
+export type StoreTier = "guest" | "free" | "premium";
 
 // アクション群を Object.assign で注入し、その型は末尾の interface 宣言マージで付与する。
 // 実体は確実に注入されるため、宣言マージ警告は意図的に無効化する。
@@ -95,10 +100,14 @@ export class FlashcardStore {
   isSaving = false;
   saveQueue = false;
 
-  // 永続層アダプタ。既定は IndexedDB(Dexie)。課金ユーザーのログイン時に
-  // クラウド(Supabase)アダプタへ差し替える（後続PR）。ストアは loadAll/saveAll の
+  // 永続層アダプタ。既定は IndexedDB(Dexie)。課金(premium)ユーザーのログイン時に
+  // applyAuth() がクラウド(Supabase)アダプタへ差し替える。ストアは loadAll/saveAll の
   // インターフェースだけに依存し、保存先の実体を意識しない。
   adapter: PersistenceAdapter = new DexieAdapter();
+  // 現在のティア（guest/free/premium）。applyAuth() がセッションに応じて更新する。
+  tier: StoreTier = "guest";
+  // init() の多重実行を防ぎつつ、applyAuth() が「初回ロード完了」を待てるようにする。
+  private initPromise: Promise<void> | null = null;
 
   newCategoryName = "";
   showProjectModal = false;
@@ -201,7 +210,14 @@ export class FlashcardStore {
   // ==========================================================
   // 初期化（init.js）
   // ==========================================================
-  async init(): Promise<void> {
+  // 初回ロード。多重呼び出しは同じ Promise を返す（applyAuth がこれを await して
+  // 「Dexie ロード完了」を保証できるようにする）。
+  init(): Promise<void> {
+    if (!this.initPromise) this.initPromise = this.runInit();
+    return this.initPromise;
+  }
+
+  private async runInit(): Promise<void> {
     setupAnimations();
     await this.loadAndMigrateData();
     this.initStreak();
@@ -213,6 +229,76 @@ export class FlashcardStore {
     // ViewTransitionEffects の副作用は再実行されない。ここで明示的に呼ぶ）。
     this.animateStreak();
     this.commit();
+  }
+
+  // セッション(ティア)に応じて永続層アダプタを選ぶ。premium のときだけ Supabase に切替える。
+  // - 初回ロード(Dexie)完了を待ってから処理する（初回同期で正しいローカルデータを使うため）。
+  // - guest/free は Dexie のまま（＝既存挙動を完全維持）。
+  // - premium 初回でクラウドが空ならローカルを 1 度だけアップロード（ローカルは消さない）。
+  // - 切替に失敗したら Dexie に戻して継続する（クラウド接続不可でもアプリは使える）。
+  async applyAuth(tier: StoreTier): Promise<void> {
+    await this.init();
+    this.tier = tier;
+
+    const wantCloud = tier === "premium";
+    const isCloud = this.adapter instanceof SupabaseAdapter;
+    if (wantCloud === isCloud) return; // 変更不要（guest/free は常に Dexie のまま）
+
+    if (wantCloud) {
+      // ログイン中の表示データ（=Dexie からロード済み）を初回同期用に退避。
+      const local: PersistenceSnapshot = {
+        categories: this.categories,
+        tags: this.tags,
+        projects: this.projects,
+      };
+      this.adapter = new SupabaseAdapter();
+      try {
+        const cloud = await this.adapter.loadAll();
+        if (cloud) {
+          // クラウドにデータあり → クラウドを正として表示を差し替える。
+          this.categories = cloud.categories;
+          this.tags = cloud.tags;
+          this.projects = cloud.projects;
+        } else {
+          // クラウド未保存 → ローカルに何かあれば初回アップロード（ローカルは保持）。
+          const hasLocal =
+            local.categories.length > 0 || local.tags.length > 0 || local.projects.length > 0;
+          if (hasLocal) await this.adapter.saveAll(clone(local));
+        }
+        this.ensureCardStats();
+        this.updateMaps();
+        this.commit();
+      } catch {
+        // クラウド接続不可 → Dexie に戻して従来どおり動作（次回ログインで再試行）。
+        this.adapter = new DexieAdapter();
+        this.tier = "free";
+        this.addToast("クラウド同期に接続できませんでした。ローカルデータで継続します", "error");
+      }
+    } else {
+      // premium → guest/free（ログアウト等）。Dexie に戻してローカルを再読込する。
+      this.adapter = new DexieAdapter();
+      try {
+        const localSnapshot = await this.adapter.loadAll();
+        if (localSnapshot) {
+          this.categories = localSnapshot.categories;
+          this.tags = localSnapshot.tags;
+          this.projects = localSnapshot.projects;
+          this.ensureCardStats();
+          this.updateMaps();
+          this.commit();
+        }
+      } catch {
+        // 失敗時は現状の表示を維持（致命的ではない）。
+      }
+    }
+  }
+
+  // stats 未設定のカードに初期値を補完した新しい projects を構築する（loadAndMigrateData と同条件）。
+  private ensureCardStats(): void {
+    this.projects = this.projects.map((p) => ({
+      ...p,
+      cards: p.cards.map((c) => (c.stats ? c : { ...c, stats: { likes: 0, nopes: 0, status: "new" as const } })),
+    }));
   }
 
   dispose(): void {

@@ -6,7 +6,8 @@
 // 旧来の { store, version } 方式（commit ごとに context が変わり全コンシューマが
 // 再描画される）を廃止する。
 import { createContext, useCallback, useContext, useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
-import { FlashcardStore } from "./FlashcardStore";
+import { useSession } from "next-auth/react";
+import { FlashcardStore, type StoreTier } from "./FlashcardStore";
 
 const StoreContext = createContext<FlashcardStore | null>(null);
 
@@ -23,7 +24,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // 初回マウント時のみ実行
   }, []);
 
-  return <StoreContext value={storeRef.current}>{children}</StoreContext>;
+  return (
+    <StoreContext value={storeRef.current}>
+      <AuthSync />
+      {children}
+    </StoreContext>
+  );
+}
+
+// セッション(ティア)の変化をストアへ伝え、premium のときだけクラウドアダプタへ切替える。
+// 自身は何も描画しない（null を返す）ので、セッション解決時の再描画がツリー全体へ波及しない
+// ＝ 選択的再描画の方針を保ったまま認証連携を行う。
+function AuthSync() {
+  const store = useStoreInstance();
+  const { data: session, status } = useSession();
+
+  // ティア判定: 未ログイン=guest、ログイン済みは session.user.tier（既定 free）。
+  const tier: StoreTier | null =
+    status === "loading" ? null : status === "authenticated" ? session?.user?.tier ?? "free" : "guest";
+
+  useEffect(() => {
+    if (tier === null) return; // セッション解決待ち
+    void store.applyAuth(tier);
+  }, [store, tier]);
+
+  return null;
 }
 
 // ストアのインスタンス取得（購読しない）。イベントハンドラや ref からの呼び出し用。
