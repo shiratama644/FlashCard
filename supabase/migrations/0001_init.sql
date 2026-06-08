@@ -21,6 +21,26 @@ create table if not exists public.decks (
   updated_at timestamptz not null default now()
 );
 
+-- updated_at を UPDATE 時に自動更新する（INSERT 時の default now() だけでは
+-- 更新時に古い値が残り、同期ロジックが変更を見落とすため）。
+create or replace function public.handle_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists on_users_updated on public.users;
+create trigger on_users_updated
+  before update on public.users
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists on_decks_updated on public.decks;
+create trigger on_decks_updated
+  before update on public.decks
+  for each row execute function public.handle_updated_at();
+
 -- RLS 有効化。サーバは service_role 接続のため RLS をバイパスする。
 -- ここでのポリシーは「各ユーザーは自分の行のみ」を表明する二重防御。
 alter table public.users enable row level security;
