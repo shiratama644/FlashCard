@@ -310,6 +310,9 @@ export class FlashcardStore {
     if (this.activeProjectId) {
       this.activeProject = this.projects.find((p) => p.id === this.activeProjectId) ?? null;
       this.currentCards = this.activeProject ? this.activeProject.cards : [];
+      // openProject と同様、activeProject 差し替え後は projectStats を再計算する
+      //（差し替え前の古い集計が Stats ビューに残らないように）。
+      this.calculateStats();
     }
     this.updateMaps();
     this.commit();

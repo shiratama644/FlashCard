@@ -36,6 +36,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.tierFetchedAt = now;
       } catch {
         token.tier = token.tier ?? "free";
+        // 失敗時もタイムスタンプを更新し、TTL の間は再問い合わせしない
+        //（Supabase 到達不可時に毎リクエストでハングするのを防ぐ）。
+        token.tierFetchedAt = now;
       }
       return token;
     },
