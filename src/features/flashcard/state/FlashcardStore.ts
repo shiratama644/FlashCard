@@ -108,6 +108,9 @@ export class FlashcardStore {
   tier: StoreTier = "guest";
   // init() の多重実行を防ぎつつ、applyAuth() が「初回ロード完了」を待てるようにする。
   private initPromise: Promise<void> | null = null;
+  // applyAuth() の世代カウンタ。fire-and-forget で多重呼び出しされた際、
+  // 各 await 後に世代が変わっていたら（新しい呼び出しが来ていたら）古い呼び出しは中断する。
+  private applyAuthVersion = 0;
 
   newCategoryName = "";
   showProjectModal = false;
@@ -237,7 +240,11 @@ export class FlashcardStore {
   // - premium 初回でクラウドが空ならローカルを 1 度だけアップロード（ローカルは消さない）。
   // - 切替に失敗したら Dexie に戻して継続する（クラウド接続不可でもアプリは使える）。
   async applyAuth(tier: StoreTier): Promise<void> {
+    // 世代を進めて自分の番号を記録する。各 await 後にこの番号が最新でなければ
+    // （新しい applyAuth が走り始めていれば）状態を触らずに中断する＝競合での破損を防ぐ。
+    const myVersion = ++this.applyAuthVersion;
     await this.init();
+    if (this.applyAuthVersion !== myVersion) return;
     this.tier = tier;
 
     const wantCloud = tier === "premium";
@@ -254,21 +261,22 @@ export class FlashcardStore {
       this.adapter = new SupabaseAdapter();
       try {
         const cloud = await this.adapter.loadAll();
+        if (this.applyAuthVersion !== myVersion) return; // 新しい呼び出しが優先
         if (cloud) {
           // クラウドにデータあり → クラウドを正として表示を差し替える。
-          this.categories = cloud.categories;
-          this.tags = cloud.tags;
-          this.projects = cloud.projects;
+          this.applySnapshot(cloud);
         } else {
           // クラウド未保存 → ローカルに何かあれば初回アップロード（ローカルは保持）。
           const hasLocal =
             local.categories.length > 0 || local.tags.length > 0 || local.projects.length > 0;
-          if (hasLocal) await this.adapter.saveAll(clone(local));
+          if (hasLocal) {
+            await this.adapter.saveAll(clone(local));
+            if (this.applyAuthVersion !== myVersion) return;
+          }
+          this.commit(); // 表示データは不変だがアダプタ切替を購読側へ通知
         }
-        this.ensureCardStats();
-        this.updateMaps();
-        this.commit();
       } catch {
+        if (this.applyAuthVersion !== myVersion) return;
         // クラウド接続不可 → Dexie に戻して従来どおり動作（次回ログインで再試行）。
         this.adapter = new DexieAdapter();
         this.tier = "free";
@@ -279,26 +287,32 @@ export class FlashcardStore {
       this.adapter = new DexieAdapter();
       try {
         const localSnapshot = await this.adapter.loadAll();
-        if (localSnapshot) {
-          this.categories = localSnapshot.categories;
-          this.tags = localSnapshot.tags;
-          this.projects = localSnapshot.projects;
-          this.ensureCardStats();
-          this.updateMaps();
-          this.commit();
-        }
+        if (this.applyAuthVersion !== myVersion) return;
+        if (localSnapshot) this.applySnapshot(localSnapshot);
       } catch {
         // 失敗時は現状の表示を維持（致命的ではない）。
       }
     }
   }
 
-  // stats 未設定のカードに初期値を補完した新しい projects を構築する（loadAndMigrateData と同条件）。
-  private ensureCardStats(): void {
-    this.projects = this.projects.map((p) => ({
+  // 永続層から読み込んだスナップショットを表示状態へ反映する（アダプタ切替時の共通処理）。
+  // stats 補完・マップ再構築に加え、study 中だった場合に activeProject 参照が古くならないよう
+  // activeProjectId から再導出する（loadAndMigrateData と同じく projects 参照を差し替えるため）。
+  private applySnapshot(snapshot: PersistenceSnapshot): void {
+    this.categories = snapshot.categories;
+    this.tags = snapshot.tags;
+    // stats 未設定のカードに初期値を補完した新しい projects を構築する（loadAndMigrateData と同条件）。
+    this.projects = snapshot.projects.map((p) => ({
       ...p,
       cards: p.cards.map((c) => (c.stats ? c : { ...c, stats: { likes: 0, nopes: 0, status: "new" as const } })),
     }));
+    // 差し替え後の projects から activeProject/currentCards を再導出（古い参照を避ける）。
+    if (this.activeProjectId) {
+      this.activeProject = this.projects.find((p) => p.id === this.activeProjectId) ?? null;
+      this.currentCards = this.activeProject ? this.activeProject.cards : [];
+    }
+    this.updateMaps();
+    this.commit();
   }
 
   dispose(): void {

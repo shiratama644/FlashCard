@@ -14,9 +14,13 @@ declare module "next-auth" {
   }
 }
 
-declare module "next-auth/jwt" {
-  // JWT に tier をキャッシュする（jwt コールバックで Supabase から取得）。
+// JWT に tier をキャッシュする（jwt コールバックで Supabase から取得）。
+// コールバックの token 型は @auth/core/jwt の JWT を参照するため、そちらを拡張する
+//（next-auth/jwt は再エクスポートのみで、ここを拡張しても本体にはマージされない）。
+declare module "@auth/core/jwt" {
   interface JWT {
     tier?: UserTier;
+    // tier を Supabase から取得した時刻(epoch ms)。TTL 判定に使い、毎回の問い合わせを避ける。
+    tierFetchedAt?: number;
   }
 }
