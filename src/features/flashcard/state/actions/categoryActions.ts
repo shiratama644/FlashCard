@@ -1,6 +1,7 @@
 import type { FlashcardStore } from "../FlashcardStore";
 import { TAG_COLORS } from "../../data/constants";
 import type { Category, Id, Tag } from "../../data/types";
+import { replaceWhere } from "../storeUtils";
 
 export interface CategoryActions {
   getRandomColor(): string;
@@ -14,6 +15,8 @@ export interface CategoryActions {
   deleteTag(id: Id): void;
   openEditTag(tag: Tag): void;
   saveTagEdit(): void;
+  toggleCategoryExpanded(id: Id): void;
+  setCategoryNewTagName(id: Id, value: string): void;
 }
 
 export const createCategoryActions = (store: FlashcardStore): CategoryActions => ({
@@ -30,7 +33,7 @@ export const createCategoryActions = (store: FlashcardStore): CategoryActions =>
   },
   addCategory(): void {
     if (!store.newCategoryName.trim()) return;
-    store.categories.push({ id: "cat_" + Date.now(), name: store.newCategoryName.trim(), colorClass: store.getRandomColor(), expanded: true, newTagName: "" });
+    store.categories = [...store.categories, { id: crypto.randomUUID(), name: store.newCategoryName.trim(), colorClass: store.getRandomColor(), expanded: true, newTagName: "" }];
     store.newCategoryName = "";
     store.updateMaps();
     store.forceSave();
@@ -55,8 +58,9 @@ export const createCategoryActions = (store: FlashcardStore): CategoryActions =>
     if (!store.editingCategory.name.trim()) return;
     const index = store.categories.findIndex((c) => c.id === store.editingCategory.id);
     if (index !== -1) {
-      store.categories[index].name = store.editingCategory.name.trim();
-      store.categories[index].colorClass = store.editingCategory.colorClass;
+      const name = store.editingCategory.name.trim();
+      const colorClass = store.editingCategory.colorClass;
+      store.categories = replaceWhere(store.categories, (c) => c.id === store.editingCategory.id, (c) => ({ ...c, name, colorClass }));
       store.updateMaps();
       store.forceSave();
     }
@@ -68,8 +72,8 @@ export const createCategoryActions = (store: FlashcardStore): CategoryActions =>
   },
   addTagToCategory(category: Category): void {
     if (!category.newTagName || !category.newTagName.trim()) return;
-    store.tags.push({ id: Date.now(), name: category.newTagName.trim(), categoryId: category.id, colorClass: store.getRandomColor() });
-    category.newTagName = "";
+    store.tags = [...store.tags, { id: crypto.randomUUID(), name: category.newTagName.trim(), categoryId: category.id, colorClass: store.getRandomColor() }];
+    store.categories = replaceWhere(store.categories, (c) => c.id === category.id, (c) => ({ ...c, newTagName: "" }));
     store.updateMaps();
     store.forceSave();
     store.commit();
@@ -92,12 +96,23 @@ export const createCategoryActions = (store: FlashcardStore): CategoryActions =>
     if (!store.editingTag.name.trim()) return;
     const index = store.tags.findIndex((t) => t.id === store.editingTag.id);
     if (index !== -1) {
-      store.tags[index].name = store.editingTag.name.trim();
-      store.tags[index].colorClass = store.editingTag.colorClass;
+      const name = store.editingTag.name.trim();
+      const colorClass = store.editingTag.colorClass;
+      store.tags = replaceWhere(store.tags, (t) => t.id === store.editingTag.id, (t) => ({ ...t, name, colorClass }));
       store.updateMaps();
       store.forceSave();
     }
     store.showEditTagModal = false;
+    store.commit();
+  },
+  // SubView のカテゴリ展開トグル（categories を新配列で差し替える immutable 更新）。
+  toggleCategoryExpanded(id: Id): void {
+    store.categories = replaceWhere(store.categories, (c) => c.id === id, (c) => ({ ...c, expanded: !c.expanded }));
+    store.commit();
+  },
+  // SubView のタグ名入力（categories を新配列で差し替える immutable 更新）。
+  setCategoryNewTagName(id: Id, value: string): void {
+    store.categories = replaceWhere(store.categories, (c) => c.id === id, (c) => ({ ...c, newTagName: value }));
     store.commit();
   },
 });

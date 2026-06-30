@@ -2,7 +2,8 @@ import { AnimationUtils } from "../../animations/utils";
 import { CardAnimations } from "../../animations/card";
 import { Effects } from "../../animations/effects";
 import type { FlashcardStore } from "../FlashcardStore";
-import type { CardStatus } from "../../data/types";
+import type { Card, CardStats, CardStatus } from "../../data/types";
+import { replaceWhere } from "../storeUtils";
 
 export interface StudyActions {
   toggleReverseMode(): void;
@@ -146,33 +147,41 @@ export const createStudyActions = (store: FlashcardStore): StudyActions => ({
       CardAnimations.prepareDrag(cardEl);
     }
 
-    const card = store.currentCards[store.currentIndex];
-    if (!card.stats) card.stats = { likes: 0, nopes: 0, status: "new" };
+    const cardIndex = store.currentIndex;
+    const card = store.currentCards[cardIndex];
+    const baseStats: CardStats = card.stats ?? { likes: 0, nopes: 0, status: "new" };
     const isButtonAction = store.currentSwipeX === 0;
-    const oldStatus = card.stats.status;
+    const oldStatus = baseStats.status;
 
+    let newStats: CardStats;
     if (direction === 1) {
-      store.sessionStats.like++;
-      card.stats.likes++;
-      card.stats.status = "mastered";
+      store.sessionStats = { ...store.sessionStats, like: store.sessionStats.like + 1 };
+      newStats = { ...baseStats, likes: baseStats.likes + 1, status: "mastered" };
       CardAnimations.animateIcon(store.refs.likeIcon, "#34d399");
       Effects.playSwipeRightConfetti();
     } else {
-      store.sessionStats.nope++;
-      card.stats.nopes++;
-      card.stats.status = "learning";
+      store.sessionStats = { ...store.sessionStats, nope: store.sessionStats.nope + 1 };
+      newStats = { ...baseStats, nopes: baseStats.nopes + 1, status: "learning" };
       CardAnimations.animateIcon(store.refs.nopeIcon, "#f87171");
     }
 
-    const newStatus = card.stats.status as CardStatus;
-    if (oldStatus !== newStatus) {
-      if (oldStatus === "new") store.projectStats.new--;
-      else if (oldStatus === "learning") store.projectStats.learning--;
-      else if (oldStatus === "mastered") store.projectStats.mastered--;
+    // カード / cards / project / 派生値を immutable に差し替える。
+    const newCard: Card = { ...card, stats: newStats };
+    const newCards = store.currentCards.map((c, i) => (i === cardIndex ? newCard : c));
+    store.projects = replaceWhere(store.projects, (p) => p.id === store.activeProjectId, (p) => ({ ...p, cards: newCards }));
+    store.syncActiveProject();
 
-      if (newStatus === "new") store.projectStats.new++;
-      else if (newStatus === "learning") store.projectStats.learning++;
-      else if (newStatus === "mastered") store.projectStats.mastered++;
+    const newStatus = newStats.status as CardStatus;
+    if (oldStatus !== newStatus) {
+      const ps = { ...store.projectStats };
+      if (oldStatus === "new") ps.new--;
+      else if (oldStatus === "learning") ps.learning--;
+      else if (oldStatus === "mastered") ps.mastered--;
+
+      if (newStatus === "new") ps.new++;
+      else if (newStatus === "learning") ps.learning++;
+      else if (newStatus === "mastered") ps.mastered++;
+      store.projectStats = ps;
       store.updateStatsRates();
     }
 

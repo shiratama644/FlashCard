@@ -1,5 +1,5 @@
 import type { FlashcardStore } from "../FlashcardStore";
-import type { BackDetail, Card } from "../../data/types";
+import type { BackDetail, Card, Category, Project, Tag } from "../../data/types";
 
 interface AnyDetailCard {
   front?: string;
@@ -134,35 +134,39 @@ export const createAiActions = (store: FlashcardStore): AiActions => ({
       const tagIdMap: Record<string, string> = {};
 
       if (data.categories && Array.isArray(data.categories)) {
-        data.categories.forEach((cat: { id: string; name?: string; colorClass?: string }) => {
-          const newId = "cat_ai_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        const newCategories: Category[] = data.categories.map((cat: { id: string; name?: string; colorClass?: string }) => {
+          const newId = crypto.randomUUID();
           catIdMap[cat.id] = newId;
-          store.categories.push({ id: newId, name: cat.name || "AIカテゴリ", colorClass: cat.colorClass || store.getRandomColor(), expanded: false, newTagName: "" });
+          return { id: newId, name: cat.name || "AIカテゴリ", colorClass: cat.colorClass || store.getRandomColor(), expanded: false, newTagName: "" };
         });
+        store.categories = [...store.categories, ...newCategories];
       }
 
       if (data.tags && Array.isArray(data.tags)) {
-        data.tags.forEach((tag: { id: string; name?: string; categoryId?: string; colorClass?: string }) => {
-          const newId = "tag_ai_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+        const newTags: Tag[] = data.tags.map((tag: { id: string; name?: string; categoryId?: string; colorClass?: string }) => {
+          const newId = crypto.randomUUID();
           tagIdMap[tag.id] = newId;
-          store.tags.push({ id: newId, name: tag.name || "AIタグ", categoryId: (tag.categoryId && catIdMap[tag.categoryId]) || tag.categoryId || "", colorClass: tag.colorClass || store.getRandomColor() });
+          return { id: newId, name: tag.name || "AIタグ", categoryId: (tag.categoryId && catIdMap[tag.categoryId]) || tag.categoryId || "", colorClass: tag.colorClass || store.getRandomColor() };
         });
+        store.tags = [...store.tags, ...newTags];
       }
 
-      data.projects.forEach((proj: { id?: string; title?: string; description?: string; categoryId?: string; cards?: AnyDetailCard[] }) => {
-        const newProjId = "proj_ai_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+      const importedProjects: Project[] = data.projects.map((proj: { id?: string; title?: string; description?: string; categoryId?: string; cards?: AnyDetailCard[] }) => {
+        const newProjId = crypto.randomUUID();
         const newCards: Card[] = (proj.cards || []).map((card) => {
           const newDetails: BackDetail[] = (card.backDetails || []).map((detail) => ({ tagId: (detail.tagId && tagIdMap[detail.tagId]) || detail.tagId || "", value: detail.value || "", expanded: false }));
           return { front: card.front || "", backDetails: newDetails, example: card.example || "", stats: { likes: 0, nopes: 0, status: "new" } };
         });
-        store.projects.unshift({
+        return {
           id: newProjId,
           title: proj.title || "AI生成プロジェクト",
           description: proj.description || "",
           categoryId: (proj.categoryId && catIdMap[proj.categoryId]) || proj.categoryId || "",
           cards: newCards,
-        });
+        };
       });
+      // 元コードは順に unshift していたため、最終的な先頭順は反転される。その順序を再現する。
+      store.projects = [...importedProjects.reverse(), ...store.projects];
 
       store.updateMaps();
       store.calculateStats();

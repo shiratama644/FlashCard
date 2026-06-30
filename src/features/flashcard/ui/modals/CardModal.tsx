@@ -68,7 +68,7 @@ export function CardModal() {
               <div className="detail-body">
                 {store.newCardDetails.map((detail, index) => (
                   <div key={"detail_" + index} className="detail-item">
-                    <div className="detail-item-header" onClick={() => store.update(() => (detail.expanded = !detail.expanded))}>
+                    <div className="detail-item-header" onClick={() => store.toggleDetailExpanded(index)}>
                       <div className="flex items-center gap-2">
                         <i className={`fa-solid fa-chevron-right chevron-icon ${detail.expanded ? "rotated" : ""}`}></i>
                         <span className="detail-header-title">{detail.value ? detail.value : "新しい意味"}</span>
@@ -91,7 +91,7 @@ export function CardModal() {
                           placeholder="タグなし (選択)"
                           selectedName={detail.tagId ? store.tagMap[String(detail.tagId)]?.name : undefined}
                           options={tagOptions}
-                          onChange={(id) => store.update(() => (detail.tagId = id))}
+                          onChange={(id) => store.setDetailTag(index, id)}
                           small
                           withNone
                           emptyText="このカテゴリにタグがありません"
@@ -100,7 +100,7 @@ export function CardModal() {
                         <input
                           type="text"
                           value={detail.value}
-                          onChange={(e) => store.update(() => (detail.value = e.target.value))}
+                          onChange={(e) => store.setDetailValue(index, e.target.value)}
                           placeholder="意味・内容"
                           className="input-field input-field-sm input-field-dark detail-value-input"
                         />

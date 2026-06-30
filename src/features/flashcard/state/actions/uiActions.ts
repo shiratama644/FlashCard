@@ -4,8 +4,8 @@ import type { Toast } from "../../data/types";
 export interface UiActions {
   goBackFromSubView(): void;
   addToast(message: string, type?: Toast["type"]): void;
-  removeToast(id: number): void;
-  showToast(id: number): void;
+  removeToast(id: string): void;
+  showToast(id: string): void;
   showConfirm(title: string, message: string, onConfirm: () => void, confirmText?: string, cancelText?: string): void;
   showAlert(title: string, message: string): void;
   confirmDialog(): void;
@@ -18,15 +18,15 @@ export const createUiActions = (store: FlashcardStore): UiActions => ({
     else store.goHome();
   },
   addToast(message: string, type: Toast["type"] = "info"): void {
-    const id = Date.now() + Math.random();
-    store.toasts.push({ id, message, type, show: false });
+    const id = crypto.randomUUID();
+    store.toasts = [...store.toasts, { id, message, type, show: false }];
     store.commit();
     setTimeout(() => store.removeToast(id), 3000);
   },
-  removeToast(id: number): void {
+  removeToast(id: string): void {
     const toast = store.toasts.find((t) => t.id === id);
     if (toast) {
-      toast.show = false;
+      store.toasts = store.toasts.map((t) => (t.id === id ? { ...t, show: false } : t));
       store.commit();
       setTimeout(() => {
         store.toasts = store.toasts.filter((t) => t.id !== id);
@@ -35,10 +35,10 @@ export const createUiActions = (store: FlashcardStore): UiActions => ({
     }
   },
   // トーストの表示フラグを次フレームで立てる（x-init の $nextTick 相当）
-  showToast(id: number): void {
+  showToast(id: string): void {
     const toast = store.toasts.find((t) => t.id === id);
     if (toast && !toast.show) {
-      toast.show = true;
+      store.toasts = store.toasts.map((t) => (t.id === id ? { ...t, show: true } : t));
       store.commit();
     }
   },
@@ -52,11 +52,11 @@ export const createUiActions = (store: FlashcardStore): UiActions => ({
   },
   confirmDialog(): void {
     if (store.dialog.onConfirm) store.dialog.onConfirm();
-    store.dialog.show = false;
+    store.dialog = { ...store.dialog, show: false };
     store.commit();
   },
   cancelDialog(): void {
-    store.dialog.show = false;
+    store.dialog = { ...store.dialog, show: false };
     store.commit();
   },
 });

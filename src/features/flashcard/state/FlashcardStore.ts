@@ -25,6 +25,8 @@ import { createStudyActions, type StudyActions } from "./actions/studyActions";
 import { createStreakActions, type StreakActions } from "./actions/streakActions";
 import { createUiActions, type UiActions } from "./actions/uiActions";
 import { createEmptyRefs, type AnyDetail, type StoreRefs } from "./storeUtils";
+import { DexieAdapter } from "../data/persistence/DexieAdapter";
+import type { PersistenceAdapter } from "../data/persistence/types";
 
 // アクション群を Object.assign で注入し、その型は末尾の interface 宣言マージで付与する。
 // 実体は確実に注入されるため、宣言マージ警告は意図的に無効化する。
@@ -92,6 +94,11 @@ export class FlashcardStore {
 
   isSaving = false;
   saveQueue = false;
+
+  // 永続層アダプタ。既定は IndexedDB(Dexie)。課金ユーザーのログイン時に
+  // クラウド(Supabase)アダプタへ差し替える（後続PR）。ストアは loadAll/saveAll の
+  // インターフェースだけに依存し、保存先の実体を意識しない。
+  adapter: PersistenceAdapter = new DexieAdapter();
 
   newCategoryName = "";
   showProjectModal = false;

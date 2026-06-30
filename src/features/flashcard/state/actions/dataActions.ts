@@ -1,9 +1,8 @@
 import { z } from "zod";
 import type { FlashcardStore } from "../FlashcardStore";
-import { db } from "../../data/db";
 import { DEFAULT_CATEGORIES, DEFAULT_PROJECTS, DEFAULT_TAGS } from "../../data/constants";
 import { CategorySchema, ProjectSchema, TagSchema } from "../../data/schema";
-import type { Category, Id, Project, Tag } from "../../data/types";
+import type { Category, Project, Tag } from "../../data/types";
 import { clone } from "../storeUtils";
 
 export interface DataActions {
@@ -56,20 +55,22 @@ export const createDataActions = (store: FlashcardStore): DataActions => ({
     if (!store.activeProject) return;
     const total = store.activeProject.cards.length;
     if (total === 0) return;
-    store.projectStats.masteredRate = (store.projectStats.mastered / total) * 100;
-    store.projectStats.learningRate = (store.projectStats.learning / total) * 100;
-    store.projectStats.newRate = (store.projectStats.new / total) * 100;
+    store.projectStats = {
+      ...store.projectStats,
+      masteredRate: (store.projectStats.mastered / total) * 100,
+      learningRate: (store.projectStats.learning / total) * 100,
+      newRate: (store.projectStats.new / total) * 100,
+    };
   },
   async loadAndMigrateData(): Promise<void> {
     try {
-      const cats = await db.categories.toArray();
-      const tags = await db.tags.toArray();
-      const projs = await db.projects.toArray();
+      // 保存先（Dexie / 将来は課金ユーザーの Supabase）はアダプタに委譲する。
+      const snapshot = await store.adapter.loadAll();
 
-      if (cats.length > 0 || tags.length > 0 || projs.length > 0) {
-        store.categories = cats;
-        store.tags = tags;
-        store.projects = projs;
+      if (snapshot) {
+        store.categories = snapshot.categories;
+        store.tags = snapshot.tags;
+        store.projects = snapshot.projects;
       } else {
         const loadedCategories = typeof localStorage !== "undefined" ? localStorage.getItem("flashcard_categories_v4") : null;
         const loadedTags = typeof localStorage !== "undefined" ? localStorage.getItem("flashcard_tags_v4") : null;
@@ -89,11 +90,11 @@ export const createDataActions = (store: FlashcardStore): DataActions => ({
         }
         store.forceSave();
       }
-      store.projects.forEach((p) => {
-        p.cards.forEach((c) => {
-          if (!c.stats) c.stats = { likes: 0, nopes: 0, status: "new" };
-        });
-      });
+      // stats 未設定のカードだけ初期値を補完した新しい projects を構築する（in-place 補完を避ける）。
+      store.projects = store.projects.map((p) => ({
+        ...p,
+        cards: p.cards.map((c) => (c.stats ? c : { ...c, stats: { likes: 0, nopes: 0, status: "new" } })),
+      }));
       store.updateMaps();
       store.commit();
     } catch {
@@ -126,31 +127,10 @@ export const createDataActions = (store: FlashcardStore): DataActions => ({
     store.isSaving = true;
     store.saveQueue = false;
     try {
-      const plainCategories = clone(store.categories);
-      const plainTags = clone(store.tags);
-      const plainProjects = clone(store.projects);
-
-      await db.transaction("rw", db.categories, db.tags, db.projects, async () => {
-        const existingCatIds = await db.categories.toCollection().primaryKeys();
-        const existingTagIds = await db.tags.toCollection().primaryKeys();
-        const existingProjIds = await db.projects.toCollection().primaryKeys();
-
-        const newCatIds = plainCategories.map((c) => c.id);
-        const newTagIds = plainTags.map((t) => t.id);
-        const newProjIds = plainProjects.map((p) => p.id);
-
-        const catsToDelete = existingCatIds.filter((id) => !newCatIds.includes(id as Id));
-        const tagsToDelete = existingTagIds.filter((id) => !newTagIds.includes(id as Id));
-        const projsToDelete = existingProjIds.filter((id) => !newProjIds.includes(id as Id));
-
-        if (catsToDelete.length > 0) await db.categories.bulkDelete(catsToDelete);
-        if (tagsToDelete.length > 0) await db.tags.bulkDelete(tagsToDelete);
-        if (projsToDelete.length > 0) await db.projects.bulkDelete(projsToDelete);
-
-        await db.categories.bulkPut(plainCategories);
-        await db.tags.bulkPut(plainTags);
-        await db.projects.bulkPut(plainProjects);
-      });
+      // 保存中のストア変化と切り離すため、呼び出し側で plain data の隔離スナップショットを作って渡す
+      //（保存先=アダプタに依らず整合性を保証する。アダプタは受領時点で隔離済みとみなせる）。
+      const snapshot = clone({ categories: store.categories, tags: store.tags, projects: store.projects });
+      await store.adapter.saveAll(snapshot);
     } catch {
       store.addToast("データの保存に失敗しました", "error");
     } finally {

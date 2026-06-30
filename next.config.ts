@@ -1,10 +1,9 @@
 import type { NextConfig } from "next";
 
-// 静的エクスポート (GitHub Pages 向け) は環境変数で切り替え
-// ローカルの dev/start ではセキュリティヘッダを有効化したい (output: export では無視されるため)
-const isStaticExport = process.env.BUILD_STATIC_EXPORT === "true";
-const basePath = process.env.BASE_PATH ?? "";
-
+// Vercel（サーバーランタイム）前提の構成。
+// 認証 / DB / 決済 / AI 中継などサーバー機能を扱うため、GitHub Pages 向けの
+// 静的エクスポート（output: "export"）経路は廃止した。
+// セキュリティヘッダはサーバー応答に常時付与する。
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -34,26 +33,14 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
-  ...(isStaticExport && {
-    output: "export",
-    trailingSlash: true,
-    images: {
-      unoptimized: true,
-    },
-    basePath: basePath || undefined,
-    assetPrefix: basePath || undefined,
-  }),
-
-  ...(!isStaticExport && {
-    async headers() {
-      return [
-        {
-          source: "/(.*)",
-          headers: securityHeaders,
-        },
-      ];
-    },
-  }),
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
