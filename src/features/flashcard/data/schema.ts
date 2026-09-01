@@ -42,3 +42,11 @@ export const ProjectSchema = z.object({
   categoryId: z.union([z.string(), z.number()]),
   cards: z.array(CardSchema),
 });
+
+// 永続化スナップショット（PersistenceSnapshot）の実行時検証スキーマ。
+// クラウド同期 API（/api/sync）の入力検証で使用し、不正な body を弾く。
+export const PersistenceSnapshotSchema = z.object({
+  categories: z.array(CategorySchema),
+  tags: z.array(TagSchema),
+  projects: z.array(ProjectSchema),
+});

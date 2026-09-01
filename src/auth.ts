@@ -8,4 +8,16 @@ import Google from "next-auth/providers/google";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
   session: { strategy: "jwt" },
+  callbacks: {
+    // JWT の sub（= ユーザー識別子）を session.user.id に載せる。
+    // 既定ではセッションに id が入らないため、クラウド同期 API（/api/sync）が
+    // ユーザーを特定できるようにここで明示的にコピーする。
+    // （tier の付与は後続 P1-e3 でこのコールバックを拡張する）
+    session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+      }
+      return session;
+    },
+  },
 });
