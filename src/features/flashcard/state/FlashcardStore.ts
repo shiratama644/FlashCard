@@ -24,9 +24,14 @@ import { createProjectActions, type ProjectActions } from "./actions/projectActi
 import { createStudyActions, type StudyActions } from "./actions/studyActions";
 import { createStreakActions, type StreakActions } from "./actions/streakActions";
 import { createUiActions, type UiActions } from "./actions/uiActions";
-import { createEmptyRefs, type AnyDetail, type StoreRefs } from "./storeUtils";
+import { clone, createEmptyRefs, type AnyDetail, type StoreRefs } from "./storeUtils";
 import { DexieAdapter } from "../data/persistence/DexieAdapter";
-import type { PersistenceAdapter } from "../data/persistence/types";
+import { SupabaseAdapter } from "../data/persistence/SupabaseAdapter";
+import type { PersistenceAdapter, PersistenceSnapshot } from "../data/persistence/types";
+
+// クライアントから見たティア。premium のときだけクラウド(Supabase)アダプタを使う。
+// 未ログイン(guest)・無料(free)は従来どおり IndexedDB(Dexie) のまま。
+export type StoreTier = "guest" | "free" | "premium";
 
 // アクション群を Object.assign で注入し、その型は末尾の interface 宣言マージで付与する。
 // 実体は確実に注入されるため、宣言マージ警告は意図的に無効化する。
@@ -95,10 +100,17 @@ export class FlashcardStore {
   isSaving = false;
   saveQueue = false;
 
-  // 永続層アダプタ。既定は IndexedDB(Dexie)。課金ユーザーのログイン時に
-  // クラウド(Supabase)アダプタへ差し替える（後続PR）。ストアは loadAll/saveAll の
+  // 永続層アダプタ。既定は IndexedDB(Dexie)。課金(premium)ユーザーのログイン時に
+  // applyAuth() がクラウド(Supabase)アダプタへ差し替える。ストアは loadAll/saveAll の
   // インターフェースだけに依存し、保存先の実体を意識しない。
   adapter: PersistenceAdapter = new DexieAdapter();
+  // 現在のティア（guest/free/premium）。applyAuth() がセッションに応じて更新する。
+  tier: StoreTier = "guest";
+  // init() の多重実行を防ぎつつ、applyAuth() が「初回ロード完了」を待てるようにする。
+  private initPromise: Promise<void> | null = null;
+  // applyAuth() の世代カウンタ。fire-and-forget で多重呼び出しされた際、
+  // 各 await 後に世代が変わっていたら（新しい呼び出しが来ていたら）古い呼び出しは中断する。
+  private applyAuthVersion = 0;
 
   newCategoryName = "";
   showProjectModal = false;
@@ -201,7 +213,14 @@ export class FlashcardStore {
   // ==========================================================
   // 初期化（init.js）
   // ==========================================================
-  async init(): Promise<void> {
+  // 初回ロード。多重呼び出しは同じ Promise を返す（applyAuth がこれを await して
+  // 「Dexie ロード完了」を保証できるようにする）。
+  init(): Promise<void> {
+    if (!this.initPromise) this.initPromise = this.runInit();
+    return this.initPromise;
+  }
+
+  private async runInit(): Promise<void> {
     setupAnimations();
     await this.loadAndMigrateData();
     this.initStreak();
@@ -212,6 +231,90 @@ export class FlashcardStore {
     // データ確定後に連続記録のカウントアップを起動（currentView は不変なので
     // ViewTransitionEffects の副作用は再実行されない。ここで明示的に呼ぶ）。
     this.animateStreak();
+    this.commit();
+  }
+
+  // セッション(ティア)に応じて永続層アダプタを選ぶ。premium のときだけ Supabase に切替える。
+  // - 初回ロード(Dexie)完了を待ってから処理する（初回同期で正しいローカルデータを使うため）。
+  // - guest/free は Dexie のまま（＝既存挙動を完全維持）。
+  // - premium 初回でクラウドが空ならローカルを 1 度だけアップロード（ローカルは消さない）。
+  // - 切替に失敗したら Dexie に戻して継続する（クラウド接続不可でもアプリは使える）。
+  async applyAuth(tier: StoreTier): Promise<void> {
+    // 世代を進めて自分の番号を記録する。各 await 後にこの番号が最新でなければ
+    // （新しい applyAuth が走り始めていれば）状態を触らずに中断する＝競合での破損を防ぐ。
+    const myVersion = ++this.applyAuthVersion;
+    await this.init();
+    if (this.applyAuthVersion !== myVersion) return;
+    this.tier = tier;
+
+    const wantCloud = tier === "premium";
+    const isCloud = this.adapter instanceof SupabaseAdapter;
+    if (wantCloud === isCloud) return; // 変更不要（guest/free は常に Dexie のまま）
+
+    if (wantCloud) {
+      // ログイン中の表示データ（=Dexie からロード済み）を初回同期用に退避。
+      const local: PersistenceSnapshot = {
+        categories: this.categories,
+        tags: this.tags,
+        projects: this.projects,
+      };
+      this.adapter = new SupabaseAdapter();
+      try {
+        const cloud = await this.adapter.loadAll();
+        if (this.applyAuthVersion !== myVersion) return; // 新しい呼び出しが優先
+        if (cloud) {
+          // クラウドにデータあり → クラウドを正として表示を差し替える。
+          this.applySnapshot(cloud);
+        } else {
+          // クラウド未保存 → ローカルに何かあれば初回アップロード（ローカルは保持）。
+          const hasLocal =
+            local.categories.length > 0 || local.tags.length > 0 || local.projects.length > 0;
+          if (hasLocal) {
+            await this.adapter.saveAll(clone(local));
+            if (this.applyAuthVersion !== myVersion) return;
+          }
+          this.commit(); // 表示データは不変だがアダプタ切替を購読側へ通知
+        }
+      } catch {
+        if (this.applyAuthVersion !== myVersion) return;
+        // クラウド接続不可 → Dexie に戻して従来どおり動作（次回ログインで再試行）。
+        this.adapter = new DexieAdapter();
+        this.tier = "free";
+        this.addToast("クラウド同期に接続できませんでした。ローカルデータで継続します", "error");
+      }
+    } else {
+      // premium → guest/free（ログアウト等）。Dexie に戻してローカルを再読込する。
+      this.adapter = new DexieAdapter();
+      try {
+        const localSnapshot = await this.adapter.loadAll();
+        if (this.applyAuthVersion !== myVersion) return;
+        if (localSnapshot) this.applySnapshot(localSnapshot);
+      } catch {
+        // 失敗時は現状の表示を維持（致命的ではない）。
+      }
+    }
+  }
+
+  // 永続層から読み込んだスナップショットを表示状態へ反映する（アダプタ切替時の共通処理）。
+  // stats 補完・マップ再構築に加え、study 中だった場合に activeProject 参照が古くならないよう
+  // activeProjectId から再導出する（loadAndMigrateData と同じく projects 参照を差し替えるため）。
+  private applySnapshot(snapshot: PersistenceSnapshot): void {
+    this.categories = snapshot.categories;
+    this.tags = snapshot.tags;
+    // stats 未設定のカードに初期値を補完した新しい projects を構築する（loadAndMigrateData と同条件）。
+    this.projects = snapshot.projects.map((p) => ({
+      ...p,
+      cards: p.cards.map((c) => (c.stats ? c : { ...c, stats: { likes: 0, nopes: 0, status: "new" as const } })),
+    }));
+    // 差し替え後の projects から activeProject/currentCards を再導出（古い参照を避ける）。
+    if (this.activeProjectId) {
+      this.activeProject = this.projects.find((p) => p.id === this.activeProjectId) ?? null;
+      this.currentCards = this.activeProject ? this.activeProject.cards : [];
+      // openProject と同様、activeProject 差し替え後は projectStats を再計算する
+      //（差し替え前の古い集計が Stats ビューに残らないように）。
+      this.calculateStats();
+    }
+    this.updateMaps();
     this.commit();
   }
 
